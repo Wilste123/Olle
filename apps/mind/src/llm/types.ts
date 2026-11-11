@@ -7,9 +7,12 @@ export interface DecideContext {
 }
 
 export interface SpeakContext {
-  decision: DecideOutput;
+  /** Locked decision — speak must not choose a different action. */
+  lockedDecision: DecideOutput;
   feelings: FeelingsState;
   memorySnippets: string[];
+  worldOk: boolean;
+  worldRejectReason?: string;
 }
 
 export interface LlmUsage {

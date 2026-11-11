@@ -2,20 +2,40 @@
 
 Private autonomous companion — Phase 0: runnable mind loop, permission gate, optional email (mock without API keys).
 
-## Architecture (one page)
+## Architecture (Pino-shaped)
+
+```mermaid
+flowchart LR
+  subgraph World["World runtime"]
+    VAL[validateAct]
+    FX[applyAct / finalizeAct]
+  end
+  subgraph Mind["Mind service"]
+    FEEL[Feelings — no LLM]
+    DEC[LLM decide]
+    SPK[LLM speak]
+  end
+  FEEL -->|sense| DEC
+  DEC -->|typed action| VAL
+  VAL --> FX
+  FX -->|ok / reject| SPK
+```
 
 ```
-apps/mind/     Tick loop: sense → feel → decide → act → speak
-packages/protocol/   Action manifest, types, permission TTL
+packages/protocol/   Typed action manifest
+apps/mind/           Mind loop + world/runtime (validate before speak)
 ```
 
-| Step | What |
-|------|------|
-| **Sense** | JSON snapshot: time, placement, feelings, threads, budgets |
-| **Feel** | Deterministic mood/energy/needs (`feelings/simulator.ts`) |
-| **Decide** | Structured action pick (Claude Haiku or heuristic); validated against manifest |
-| **Act** | Typed executor; Class C creates 72h permission requests |
-| **Speak** | Second LLM pass (Claude Sonnet or templates) after action is locked |
+| Step | What | LLM? |
+|------|------|------|
+| **Feel** | Mood / energy / needs each tick; setbacks ~7.5× wins | **No** |
+| **Sense** | Observations JSON for decide | **No** |
+| **Decide** | One `action_id` + params + `because` from allow-list | Only if salient (or interval) |
+| **World** | `validateAct` then `applyAct` — mind proposes, world accepts/rejects | **No** |
+| **Speak** | Voice **after** world result; locked action, no re-choice | Second call |
+| **Sleep** | Consolidation batch only; no decide/speak | **No** |
+
+Feed entries follow Pino kinds: `did` / `noticed` / `felt` / `mind` with `why`, `ok`, `about`, `change`.
 
 **Placement:** Olle defaults to `{ status: "unplaced" }`. Mind ticks run fully while unplaced (private diary, rest, email stubs). Class C in Phase 0 is **shared diary proposals only** — no map pins or physical-world UI.
 
@@ -47,14 +67,17 @@ npm run olle -- permit approve <request-id>
 npm run olle -- permit deny <request-id>
 ```
 
-## AI architecture
+## AI architecture (decide-then-speak, Pino-first)
 
-Olle uses **decide-then-speak** (two calls, never one blob):
+Matches [Pino Protocol](https://protocol.pinos.world/) ordering: **world validates the act before speak text is generated**.
 
-1. **Decide** (`HeuristicProvider` or `AnthropicProvider`) — inputs: feelings, legal actions from the manifest, memory snippets, feed tail. Output must be JSON `{ action_id, params, because }`, validated before **Act** runs. Claude uses the Messages API with a `pick_action` tool.
-2. **Speak** — runs **after** the action is fixed. Generates Olle’s outward voice (diary line or email body). Templates when `OLLE_LLM_PROVIDER=heuristic` or no API key.
+1. **Decide** (`HeuristicProvider` | `AnthropicProvider`) — feelings, legal manifest actions, memory snippets. Output `{ action_id, params, because }`; world `validateAct` runs next (not inside the LLM).
+2. **World** — `applyAct` mutates state / permission queue; failures log `did` with `ok: false`.
+3. **Speak** — separate call with **locked** action + `world_ok`; must not pick a new action. Prose hits the world in `finalizeAct` (diary lines, email bodies).
 
-**Cost control:** If nothing is salient (calm idle continuation), the decide LLM is **skipped** and Olle picks `continue_activity` without calling Claude. Token usage is appended to the state feed when LLM runs.
+**Idle fallback (~half of Pino ticks):** continuing the same activity with nothing salient → `continue_activity` with **no decide LLM**.
+
+**Asleep:** feelings tick only; optional consolidation job; **zero** decide/speak inference.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|

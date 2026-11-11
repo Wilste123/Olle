@@ -7,10 +7,18 @@ import type {
 } from "@olle/protocol";
 import { PERMISSION_TTL_MS } from "@olle/protocol";
 
+/** Pino-style feed kinds. */
+export type PinoFeedKind = "did" | "noticed" | "felt" | "mind";
+
 export interface FeedEntry {
   at: string;
-  kind: string;
+  kind: PinoFeedKind | string;
   text: string;
+  why?: string;
+  ok?: boolean;
+  about?: string;
+  change?: string;
+  action_id?: string;
   meta?: Record<string, unknown>;
 }
 
@@ -35,6 +43,7 @@ export interface OlleWorldState {
   outbox: { subject: string; body: string; at: string }[];
   audit: { at: string; kind: string; detail: Record<string, unknown> }[];
   lastActivity: string;
+  lastDecisionActionId?: string;
   tickCount: number;
 }
 
@@ -90,9 +99,43 @@ export function appendAudit(
   state.audit.push({ at: new Date().toISOString(), kind, detail });
 }
 
-export function appendFeed(state: OlleWorldState, kind: string, text: string, meta?: Record<string, unknown>): void {
-  state.feed.push({ at: new Date().toISOString(), kind, text, meta });
+export function appendPinoFeed(
+  state: OlleWorldState,
+  kind: PinoFeedKind,
+  text: string,
+  fields?: {
+    why?: string;
+    ok?: boolean;
+    about?: string;
+    change?: string;
+    action_id?: string;
+    meta?: Record<string, unknown>;
+  },
+): void {
+  state.feed.push({
+    at: new Date().toISOString(),
+    kind,
+    text,
+    why: fields?.why,
+    ok: fields?.ok,
+    about: fields?.about,
+    change: fields?.change,
+    action_id: fields?.action_id,
+    meta: fields?.meta,
+  });
   if (state.feed.length > 200) state.feed = state.feed.slice(-200);
+}
+
+/** @deprecated Use appendPinoFeed */
+export function appendFeed(
+  state: OlleWorldState,
+  kind: string,
+  text: string,
+  meta?: Record<string, unknown>,
+): void {
+  const pinoKind: PinoFeedKind =
+    kind === "tick" || kind === "think" ? "mind" : kind === "feel_note" ? "felt" : "did";
+  appendPinoFeed(state, pinoKind, text, { meta, action_id: meta?.action_id as string | undefined });
 }
 
 export function createPermissionRequest(

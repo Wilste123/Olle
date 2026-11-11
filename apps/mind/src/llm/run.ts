@@ -3,7 +3,7 @@ import { heuristicDecide } from "../decide/heuristic.js";
 import { HeuristicProvider, idleContinuation } from "./heuristic-provider.js";
 import { isSalientForDecide } from "./salience.js";
 import type { DecideContext, DecideResult, LlmProvider, SpeakContext, SpeakResult } from "./types.js";
-import type { SenseSnapshot } from "@olle/protocol";
+import type { ActionId, SenseSnapshot } from "@olle/protocol";
 
 export function buildDecideContext(
   sense: SenseSnapshot,
@@ -19,11 +19,19 @@ export function buildDecideContext(
 }
 
 export function buildSpeakContext(
-  decision: DecideResult["output"],
+  lockedDecision: DecideResult["output"],
   feelings: SenseSnapshot["feelings"],
   memorySnippets: string[],
+  worldOk: boolean,
+  worldRejectReason?: string,
 ): SpeakContext {
-  return { decision, feelings, memorySnippets };
+  return {
+    lockedDecision,
+    feelings,
+    memorySnippets,
+    worldOk,
+    worldRejectReason,
+  };
 }
 
 export async function runDecide(
@@ -43,9 +51,7 @@ export async function runDecide(
   }
 
   try {
-    const result = await provider.decide(ctx);
-    if (result.fellBack) return result;
-    return result;
+    return await provider.decide(ctx);
   } catch {
     return {
       output: heuristicDecide(ctx.sense),
@@ -75,6 +81,7 @@ export function shouldDecideBeSalient(
   sense: SenseSnapshot,
   lastActivity: string,
   tickCount: number,
+  lastDecisionActionId?: ActionId,
 ): boolean {
-  return isSalientForDecide(sense, lastActivity, tickCount);
+  return isSalientForDecide(sense, lastActivity, tickCount, lastDecisionActionId);
 }

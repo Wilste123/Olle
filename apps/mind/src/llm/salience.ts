@@ -1,13 +1,15 @@
 import type { SenseSnapshot } from "@olle/protocol";
+import type { ActionId } from "@olle/protocol";
 
-/** Pino-style idle skip: skip decide LLM when nothing salient. */
+/** Pino-style idle skip: no decide LLM when continuing same activity and calm. */
 export function isSalientForDecide(
   sense: SenseSnapshot,
   lastActivity: string,
   tickCount: number,
+  lastDecisionActionId?: ActionId,
 ): boolean {
+  if (sense.feelings.asleep) return false;
   if (sense.inboundSinceLastTick > 0) return true;
-  if (sense.feelings.asleep) return true;
   if (sense.feelings.energy < 0.35) return true;
   if (Math.abs(sense.feelings.mood) > 0.55) return true;
 
@@ -18,6 +20,10 @@ export function isSalientForDecide(
 
   if (tickCount > 0 && tickCount % 24 === 0) return true;
 
-  if (lastActivity === "continuing" || lastActivity === "idle") return false;
+  const continuing =
+    lastActivity === "continuing" ||
+    (lastDecisionActionId === "continue_activity" && lastActivity !== "idle");
+  if (continuing) return false;
+
   return true;
 }

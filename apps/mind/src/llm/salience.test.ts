@@ -22,8 +22,8 @@ function sense(needsOver: Partial<SenseSnapshot["feelings"]["needs"]> = {}): Sen
 }
 
 describe("isSalientForDecide", () => {
-  it("skips when continuing and calm", () => {
-    expect(isSalientForDecide(sense(), "continuing", 5)).toBe(false);
+  it("skips when continuing same activity", () => {
+    expect(isSalientForDecide(sense(), "continuing", 5, "continue_activity")).toBe(false);
   });
 
   it("fires on high social need", () => {

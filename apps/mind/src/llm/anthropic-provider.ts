@@ -116,7 +116,11 @@ export class AnthropicProvider implements LlmProvider {
 
   async speak(ctx: SpeakContext): Promise<SpeakResult> {
     const userPayload = {
-      locked_action: ctx.decision,
+      locked_action_id: ctx.lockedDecision.action_id,
+      locked_params: ctx.lockedDecision.params,
+      because: ctx.lockedDecision.because,
+      world_ok: ctx.worldOk,
+      world_reject_reason: ctx.worldRejectReason,
       feelings: ctx.feelings,
       memory_snippets: ctx.memorySnippets,
     };
@@ -125,7 +129,7 @@ export class AnthropicProvider implements LlmProvider {
       const message = await this.client.messages.create({
         model: this.speakModel,
         max_tokens: 320,
-        system: `${OLLE_VOICE}\n\nYou are the SPEAK step. The action is already chosen — generate only the short outward line (diary voice or email body). No JSON. Max ~3 sentences.`,
+        system: `${OLLE_VOICE}\n\nYou are the SPEAK step only. The action is LOCKED — do not choose or suggest any action. Generate the short outward line (diary or email body). If world_ok is false, briefly acknowledge the rejection. No JSON. Max ~3 sentences.`,
         messages: [
           {
             role: "user",

@@ -11,11 +11,15 @@ export class HeuristicProvider implements LlmProvider {
   }
 
   async speak(ctx: SpeakContext): Promise<SpeakResult> {
-    return { text: speakAfterDecide(ctx.decision, ctx.feelings) };
+    if (!ctx.worldOk) {
+      return {
+        text: `Couldn't do that: ${ctx.worldRejectReason ?? "world rejected the action"}.`,
+      };
+    }
+    return { text: speakAfterDecide(ctx.lockedDecision, ctx.feelings) };
   }
 }
 
-/** Idle continuation without re-running full heuristic rules. */
 export function idleContinuation(): DecideOutput {
   return {
     action_id: "continue_activity",

@@ -83,13 +83,14 @@ describe("AnthropicProvider", () => {
       client: mockClient({}, "Diary line for William."),
     });
     const result = await provider.speak({
-      decision: {
+      lockedDecision: {
         action_id: "append_private_diary",
         params: { line: "test" },
         because: "expression",
       },
       feelings: baseSense.feelings,
       memorySnippets: [],
+      worldOk: true,
     });
     expect(result.text).toBe("Diary line for William.");
     expect(result.usage?.step).toBe("speak");

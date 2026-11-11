@@ -10,8 +10,9 @@ async function loop(): Promise<void> {
       console.log(
         JSON.stringify(
           {
-            action: r.decision.action_id,
-            because: r.decision.because,
+            asleep: r.asleep ?? false,
+            action: r.decision?.action_id,
+            because: r.decision?.because,
             spoke: r.spoke,
             permissionId: r.permissionId,
           },
