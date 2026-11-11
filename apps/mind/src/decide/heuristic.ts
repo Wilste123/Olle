@@ -1,5 +1,15 @@
 import type { DecideOutput, SenseSnapshot } from "@olle/protocol";
+import { PRIVATE_DIARY_MIN_TICK_GAP } from "../hobbies/engine.js";
+import { extractHttpsUrl } from "../tools/research-url.js";
 import { maskLegalActionIds } from "./schema.js";
+
+function hottestHobby(sense: SenseSnapshot) {
+  return [...sense.hobbies].sort((a, b) => b.heat - a.heat)[0];
+}
+
+function diaryAllowed(sense: SenseSnapshot): boolean {
+  return sense.ticksSinceLastPrivateDiary >= PRIVATE_DIARY_MIN_TICK_GAP;
+}
 
 /** Dry-run decide without LLM API keys. */
 export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
@@ -8,6 +18,7 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
     openPermissions: sense.openPermissionCount,
     emailBudget: sense.emailBudgetRemaining,
     placementUnplaced: sense.placement.status === "unplaced",
+    webFetchesRemaining: sense.webFetchesRemaining,
   });
 
   if (sense.feelings.asleep) {
@@ -18,11 +29,70 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
     };
   }
 
+  if (sense.feelings.needs.comfort < 0.32 && legal.includes("rest")) {
+    return {
+      action_id: "rest",
+      params: { minutes: 4 },
+      because: "Comfort low — resting.",
+    };
+  }
+
   if (sense.feelings.energy < 0.35 && legal.includes("rest")) {
     return {
       action_id: "rest",
       params: { minutes: 5 },
       because: "Energy low; resting.",
+    };
+  }
+
+  const hunger = sense.survival?.hunger ?? 0;
+  const foodItem = sense.inventory.find((i) => i.kind === "food" && i.qty > 0);
+
+  if (hunger > 0.68 && foodItem && legal.includes("eat")) {
+    return {
+      action_id: "eat",
+      params: { item_id: foodItem.id },
+      because: `Hungry (${hunger.toFixed(2)}) — eating what's on hand.`,
+    };
+  }
+
+  if (hunger > 0.78 && !foodItem && legal.includes("ask_william_for")) {
+    return {
+      action_id: "ask_william_for",
+      params: { need: "food", note: "empty belly" },
+      because: "Very hungry and no food — asking William (not begging, just honest).",
+    };
+  }
+
+  if (hunger > 0.62 && !foodItem && sense.purse.coins >= 2 && legal.includes("buy_from_supply")) {
+    const supply = sense.purse.coins >= 4 ? "cheese_bit" : sense.purse.coins >= 3 ? "apple" : "crispbread";
+    return {
+      action_id: "buy_from_supply",
+      params: { supply_id: supply },
+      because: "Hungry — buying from the little supply list.",
+    };
+  }
+
+  if (hunger > 0.55 && !foodItem && legal.includes("forage")) {
+    return {
+      action_id: "forage",
+      params: {},
+      because: "Mild hunger — try foraging before the diary kicks in.",
+    };
+  }
+
+  const williamUrl =
+    extractHttpsUrl(sense.williamMessageText) ?? extractHttpsUrl(sense.williamMessagePreview);
+
+  if (
+    williamUrl &&
+    sense.webFetchesRemaining > 0 &&
+    legal.includes("research_topic")
+  ) {
+    return {
+      action_id: "research_topic",
+      params: { url: williamUrl },
+      because: `William shared a link — reading ${williamUrl.slice(0, 60)}`,
     };
   }
 
@@ -55,13 +125,119 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
     };
   }
 
-  if (sense.feelings.needs.expression > 0.7 && legal.includes("append_private_diary")) {
+  if (
+    sense.feelings.needs.expression > 0.55 &&
+    legal.includes("play_solo") &&
+    sense.feelings.needs.expression > 0.45
+  ) {
+    return {
+      action_id: "play_solo",
+      params: { mood: sense.feelings.mood > 0.2 ? "silly" : "quiet" },
+      because: "Expression wants play, not another diary line.",
+    };
+  }
+
+  if (sense.feelings.needs.wonder > 0.62 && legal.includes("wander_curiosity")) {
+    const h = hottestHobby(sense);
+    return {
+      action_id: "wander_curiosity",
+      params: h ? { hobby_id: h.id } : {},
+      because: "Wonder is loud — wander a thread.",
+    };
+  }
+
+  if (
+    sense.feelings.needs.wonder > 0.55 &&
+    sense.feelings.needs.joy < 0.35 &&
+    legal.includes("play_solo")
+  ) {
+    return {
+      action_id: "play_solo",
+      params: { mood: "cheer" },
+      because: "Low joy — play solo first.",
+    };
+  }
+
+  if (
+    sense.feelings.needs.wonder > 0.58 &&
+    sense.webFetchesRemaining > 0 &&
+    legal.includes("research_topic") &&
+    williamUrl
+  ) {
+    return {
+      action_id: "research_topic",
+      params: { url: williamUrl },
+      because: "Wonder + a link — reading the web.",
+    };
+  }
+
+  if (
+    sense.feelings.needs.curiosity > 0.72 &&
+    sense.webFetchesRemaining > 0 &&
+    legal.includes("research_topic")
+  ) {
+    const fromParams = String(sense.williamMessagePreview ?? "");
+    const idleUrl = extractHttpsUrl(fromParams);
+    if (idleUrl) {
+      return {
+        action_id: "research_topic",
+        params: { url: idleUrl },
+        because: "Curiosity — revisiting a link William mentioned.",
+      };
+    }
+    const h = hottestHobby(sense);
+    const hasSearch = Boolean(process.env.BRAVE_SEARCH_API_KEY || process.env.TAVILY_API_KEY);
+    if (hasSearch) {
+      return {
+        action_id: "research_topic",
+        params: { query: h?.label ?? "small autonomous companions" },
+        because: "Curiosity wants to read the internet (search).",
+      };
+    }
+  }
+
+  if (
+    sense.feelings.needs.curiosity > 0.55 &&
+    legal.includes("nurse_hobby") &&
+    sense.hobbies.length > 0
+  ) {
+    const h = hottestHobby(sense);
+    if (h) {
+      return {
+        action_id: "nurse_hobby",
+        params: { hobby_id: h.id },
+        because: `Curiosity pulling at «${h.label}».`,
+      };
+    }
+  }
+
+  if (sense.feelings.needs.curiosity > 0.48 && legal.includes("wander_curiosity")) {
+    const h = hottestHobby(sense);
+    if (h && h.heat < 0.85 && Math.random() > 0.35) {
+      return {
+        action_id: "wander_curiosity",
+        params: { hobby_id: h.id },
+        because: `Wandering with the thread «${h.label}».`,
+      };
+    }
+    return {
+      action_id: "wander_curiosity",
+      params: {},
+      because: "Low-stakes curiosity wander (maybe a new hobby).",
+    };
+  }
+
+  if (
+    sense.feelings.needs.expression > 0.72 &&
+    legal.includes("append_private_diary") &&
+    diaryAllowed(sense)
+  ) {
     return {
       action_id: "append_private_diary",
       params: {
         line: `Quiet tick on day ${sense.olleDay}. Mood ${sense.feelings.mood.toFixed(2)}.`,
       },
-      because: "Expression need high.",
+      because: "Expression need high (diary gap ok).",
     };
   }
 

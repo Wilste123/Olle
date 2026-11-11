@@ -1,36 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { OlleWorldState } from "../world/store.js";
 import {
   enqueueInboundOffering,
   processInboundForTick,
   stripInboundReplyBody,
 } from "./offering.js";
-
-function emptyState(): OlleWorldState {
-  return {
-    version: 1,
-    placement: { status: "unplaced" },
-    olleDay: 0,
-    feelings: {
-      mood: 0,
-      energy: 0.8,
-      needs: { rest: 0.2, curiosity: 0.3, social: 0.3, expression: 0.3, quiet: 0.2 },
-      asleep: false,
-    },
-    privateDiary: [],
-    sharedDiaryQueue: [],
-    feed: [],
-    permissions: [],
-    outbox: [],
-    audit: [],
-    inboundQueue: [],
-    memories: [],
-    emailSends: [],
-    conversation: [],
-    lastActivity: "idle",
-    tickCount: 0,
-  };
-}
+import { emptyWorldState } from "../test/world-fixture.js";
 
 describe("stripInboundReplyBody", () => {
   it("drops quoted lines and On-wrote", () => {
@@ -44,7 +18,7 @@ On Tue William wrote:
 
 describe("inbound offerings", () => {
   it("enqueues and remembers on tick", () => {
-    const state = emptyState();
+    const state = emptyWorldState();
     enqueueInboundOffering(state, {
       from: "w@example.com",
       subject: "Trip idea",

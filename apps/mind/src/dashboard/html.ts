@@ -47,6 +47,15 @@ export function renderDashboard(
 
   const memItems = now.memories.map((m) => `<li>${esc(m.text)} <small>(${m.strength.toFixed(2)})</small></li>`).join("");
 
+  const hunger = now.survival.hunger.toFixed(2);
+  const hobbyItems = now.hobbies
+    .map((h) => `<li>${esc(h.label)} <small>heat ${h.heat.toFixed(2)}</small></li>`)
+    .join("");
+
+  const privateDiaryItems = now.privateDiaryTail
+    .map((line) => `<li>${esc(line)}</li>`)
+    .join("");
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -75,8 +84,26 @@ export function renderDashboard(
     <span class="pill">energy ${energy}</span>
     <span class="pill">email budget ${now.emailBudgetRemaining}</span>
     <span class="pill">ticks ${now.tickCount}</span>
+    <span class="pill">hunger ${hunger}</span>
+    <span class="pill">coins ${now.purse.coins}</span>
+    <span class="pill">affection ${now.feelings.affection.toFixed(2)}</span>
+    <span class="pill">${now.feelings.feelingWords.map(esc).join(" · ") || "—"}</span>
   </p>
-  <p>Activity: ${esc(now.lastActivity)} · <a href="/chat">Prat</a> · <a href="/api/now">/api/now</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
+  <p class="needs">
+    ${["rest", "curiosity", "social", "expression", "quiet", "wonder", "joy", "comfort", "sustenance"]
+      .map((k) => {
+        const v = now.feelings.needs[k as keyof typeof now.feelings.needs];
+        return `<span class="pill" title="need ${k}">${k} ${Number(v).toFixed(2)}</span>`;
+      })
+      .join(" ")}
+  </p>
+  <p>Doing: ${esc(now.doing)} · <a href="/chat">Prat</a> · <a href="/diary">Dagbok</a> · <a href="#diary">Dagbok ↓</a> · <a href="/api/now">/api/now</a> · <a href="/api/diary">/api/diary</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
+  <p>Inventory: ${esc(now.inventorySummary)}</p>
+
+  <section>
+    <h2>Hobbies / threads</h2>
+    <ul>${hobbyItems || "<li>(warming up)</li>"}</ul>
+  </section>
 
   <section>
     <h2>Pending permissions</h2>
@@ -84,6 +111,12 @@ export function renderDashboard(
       <thead><tr><th>Id</th><th>Action</th><th>Status</th><th>Expires</th></tr></thead>
       <tbody>${permRows || "<tr><td colspan=4>(none)</td></tr>"}</tbody>
     </table>
+  </section>
+
+  <section id="diary">
+    <h2>Olles private diary</h2>
+    <p class="note" style="color:#555;font-size:0.95rem;">Usually private thoughts Olle shares with you (not the public shared diary). <a href="/diary">Open full dagbok</a> · newest first, last ${now.privateDiaryTail.length} lines.</p>
+    <ul>${privateDiaryItems || "<li>(empty — ticks will add lines)</li>"}</ul>
   </section>
 
   <section>

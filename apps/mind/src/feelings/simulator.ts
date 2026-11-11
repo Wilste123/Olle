@@ -1,4 +1,5 @@
 import type { FeelingsState } from "@olle/protocol";
+import { deriveFeelingWords } from "./labels.js";
 
 export interface FeelingsTickInput {
   /** Events since last tick: positive = win, negative = setback */
@@ -22,20 +23,28 @@ export function initFeelings(): FeelingsState {
       social: 0.4,
       expression: 0.35,
       quiet: 0.2,
+      wonder: 0.45,
+      joy: 0.4,
+      comfort: 0.55,
+      sustenance: 0.35,
     },
     asleep: false,
+    feelingWords: ["rolig", "våken"],
+    affection: 0.45,
   };
 }
 
 export function tickFeelings(prev: FeelingsState, input: FeelingsTickInput): FeelingsState {
   if (prev.asleep) {
+    const needs = {
+      ...prev.needs,
+      rest: clamp(prev.needs.rest - 0.01 * input.deltaSec, 0, 1),
+    };
     return {
       ...prev,
       energy: clamp(prev.energy + 0.02 * input.deltaSec, 0, 1),
-      needs: {
-        ...prev.needs,
-        rest: clamp(prev.needs.rest - 0.01 * input.deltaSec, 0, 1),
-      },
+      needs,
+      feelingWords: deriveFeelingWords({ ...prev, needs, asleep: true }),
     };
   }
 
@@ -56,20 +65,41 @@ export function tickFeelings(prev: FeelingsState, input: FeelingsTickInput): Fee
   needs.curiosity = clamp(needs.curiosity + 0.004 * input.deltaSec, 0, 1);
   needs.social = clamp(needs.social + 0.003 * input.deltaSec, 0, 1);
   needs.expression = clamp(needs.expression + 0.002 * input.deltaSec, 0, 1);
+  needs.wonder = clamp(needs.wonder + 0.0035 * input.deltaSec, 0, 1);
+  needs.joy = clamp(needs.joy - 0.0015 * input.deltaSec, 0, 1);
   if (input.wasResting) {
     needs.rest = clamp(needs.rest - 0.02 * input.deltaSec, 0, 1);
     needs.quiet = clamp(needs.quiet - 0.01 * input.deltaSec, 0, 1);
+    needs.comfort = clamp(needs.comfort + 0.012 * input.deltaSec, 0, 1);
   } else {
     needs.rest = clamp(needs.rest + 0.006 * input.deltaSec, 0, 1);
+    needs.comfort = clamp(needs.comfort - 0.002 * input.deltaSec, 0, 1);
+  }
+  if (mood > prev.mood) {
+    needs.joy = clamp(needs.joy + 0.02, 0, 1);
+  } else if (mood < prev.mood - 0.05) {
+    needs.comfort = clamp(needs.comfort - 0.04, 0, 1);
   }
 
-  return { mood, energy, needs, asleep: false };
+  const feelingWords = deriveFeelingWords({ ...prev, mood, energy, needs, asleep: false });
+  return { mood, energy, needs, asleep: false, affection: prev.affection, feelingWords };
 }
 
 export function enterSleep(f: FeelingsState): FeelingsState {
-  return { ...f, asleep: true };
+  return { ...f, asleep: true, feelingWords: deriveFeelingWords({ ...f, asleep: true }) };
 }
 
 export function wake(f: FeelingsState): FeelingsState {
-  return { ...f, asleep: false, energy: clamp(f.energy + 0.2, 0, 1) };
+  const next = { ...f, asleep: false, energy: clamp(f.energy + 0.2, 0, 1) };
+  next.feelingWords = deriveFeelingWords(next);
+  return next;
+}
+
+export function applyNeedDelta(feelings: FeelingsState, delta: Partial<FeelingsState["needs"]>): void {
+  for (const [k, v] of Object.entries(delta)) {
+    if (typeof v !== "number") continue;
+    const key = k as keyof FeelingsState["needs"];
+    feelings.needs[key] = clamp(feelings.needs[key] + v, 0, 1);
+  }
+  feelings.feelingWords = deriveFeelingWords(feelings);
 }

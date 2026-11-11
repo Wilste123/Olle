@@ -4,6 +4,8 @@ loadOlleEnv();
 import type { DecideOutput } from "@olle/protocol";
 import type { SenseSnapshot } from "@olle/protocol";
 import { tickFeelings } from "./feelings/simulator.js";
+import { syncSustenanceNeed } from "./feelings/normalize.js";
+import { deriveFeelingWords } from "./feelings/labels.js";
 import { createLlmProvider } from "./llm/factory.js";
 import {
   buildDecideContext,
@@ -11,7 +13,17 @@ import {
   runDecide,
   runSpeak,
   shouldDecideBeSalient,
+  shouldUseLlmSpeak,
 } from "./llm/run.js";
+import {
+  decayHobbyHeat,
+  ensureHobbies,
+  hobbyLabelsForSense,
+  ticksSinceLastPrivateDiary,
+} from "./hobbies/engine.js";
+import { tickHunger } from "./survival/hunger.js";
+import { ensureSurvivalState, inventorySummary } from "./survival/inventory.js";
+import { webFetchesRemaining } from "./tools/web-rate.js";
 import { runSleepConsolidation } from "./mind/sleep.js";
 import {
   expireStalePermissions,
@@ -26,6 +38,7 @@ import { getEmailBudgetRemaining } from "./email/rate-limits.js";
 import {
   countUnreadFromWilliam,
   latestUnreadWilliamPreview,
+  latestUnreadWilliamText,
   williamUnreadSinceLastTick,
 } from "./conversation/messages.js";
 import { processInboundForTick } from "./inbound/offering.js";
@@ -69,6 +82,13 @@ export async function runMindTick(): Promise<TickResult> {
     return { asleep: true };
   }
 
+  ensureHobbies(state);
+  ensureSurvivalState(state);
+  decayHobbyHeat(state, 1);
+  tickHunger(state, 1);
+  syncSustenanceNeed(state.feelings, state.survival.hunger);
+  state.feelings.feelingWords = deriveFeelingWords(state.feelings);
+
   const inboundProcessed = processInboundForTick(state);
   const memorySnippets = [
     ...state.memories.slice(-5).map((m) => m.text),
@@ -80,13 +100,21 @@ export async function runMindTick(): Promise<TickResult> {
     olleDay: state.olleDay,
     placement: state.placement,
     feelings: state.feelings,
-    threads: ["William", "today"],
+    threads: ["William", ...hobbyLabelsForSense(state)],
+    hobbies: state.hobbies,
+    ticksSinceLastPrivateDiary: ticksSinceLastPrivateDiary(state),
     emailBudgetRemaining: getEmailBudgetRemaining(state),
     openPermissionCount: getOpenPermissionCount(state),
     recentFeedTail: state.feed.slice(-5).map((f) => f.text),
     inboundSinceLastTick: inboundProcessed.newCount + williamUnreadSinceLastTick(state),
     unreadFromWilliam: countUnreadFromWilliam(state),
     williamMessagePreview: latestUnreadWilliamPreview(state),
+    williamMessageText: latestUnreadWilliamText(state),
+    survival: state.survival,
+    purse: state.purse,
+    inventory: state.inventory,
+    inventorySummary: inventorySummary(state),
+    webFetchesRemaining: webFetchesRemaining(state),
   };
 
   const salient = shouldDecideBeSalient(
@@ -135,15 +163,21 @@ export async function runMindTick(): Promise<TickResult> {
   }
   if (decideResult.skippedLlm) usages.skippedDecide = true;
 
-  const speakCtx = buildSpeakContext(
-    decideResult.output,
-    state.feelings,
-    memorySnippets,
-    actResult.ok,
-    actResult.rejectReason ?? validation.rejectReason,
-  );
+  const speakCtx = {
+    ...buildSpeakContext(
+      decideResult.output,
+      state.feelings,
+      memorySnippets,
+      actResult.ok,
+      actResult.rejectReason ?? validation.rejectReason,
+    ),
+    williamMessageText: sense.williamMessageText,
+    placement: state.placement,
+    researchExcerpt: state.lastResearch?.excerpt,
+    researchUrl: state.lastResearch?.url,
+  };
   const speakResult = await runSpeak(provider, speakCtx, {
-    useLlm: provider.name !== "heuristic",
+    useLlm: shouldUseLlmSpeak(provider, decideResult.output.action_id),
   });
 
   if (speakResult.usage) {

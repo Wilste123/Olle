@@ -13,6 +13,8 @@ export function speakAfterDecide(decision: DecideOutput, feelings: FeelingsState
       return `Hei William — ${decision.because} (mood: ${moodWord}).`;
     case "propose_shared_diary_entry":
       return `I'd like to add to our shared diary when you approve: "${String(decision.params.title ?? "")}"`;
+    case "research_topic":
+      return `Read something online: ${decision.because} (short notes in diary).`;
     case "rest":
       return `Resting a few minutes. Energy was ${feelings.energy.toFixed(2)}.`;
     default:

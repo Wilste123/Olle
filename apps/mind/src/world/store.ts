@@ -2,9 +2,15 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type {
   FeelingsState,
+  HobbyThread,
+  InventoryItem,
   PermissionRequestRecord,
   Placement,
+  PurseState,
+  SurvivalState,
 } from "@olle/protocol";
+import { ensureSurvivalState } from "../survival/inventory.js";
+import { normalizeFeelings } from "../feelings/normalize.js";
 import { PERMISSION_TTL_MS } from "@olle/protocol";
 
 /** Pino-style feed kinds. */
@@ -67,7 +73,7 @@ export interface ConversationMessage {
 }
 
 export interface OlleWorldState {
-  version: 1;
+  version: 1 | 2 | 3;
   placement: Placement;
   olleDay: number;
   feelings: FeelingsState;
@@ -85,24 +91,27 @@ export interface OlleWorldState {
   lastActivity: string;
   lastDecisionActionId?: string;
   tickCount: number;
+  hobbies: HobbyThread[];
+  lastPrivateDiaryTick?: number;
+  survival: SurvivalState;
+  purse: PurseState;
+  inventory: InventoryItem[];
+  researchFetches?: { at: string; day: string; url: string }[];
+  lastResearch?: {
+    query?: string;
+    url: string;
+    title?: string;
+    excerpt: string;
+    truncated?: boolean;
+    at: string;
+  };
 }
 
 const DEFAULT_STATE = (): OlleWorldState => ({
-  version: 1,
+  version: 3,
   placement: { status: "unplaced" },
   olleDay: 0,
-  feelings: {
-    mood: 0.1,
-    energy: 0.75,
-    needs: {
-      rest: 0.3,
-      curiosity: 0.5,
-      social: 0.4,
-      expression: 0.35,
-      quiet: 0.2,
-    },
-    asleep: false,
-  },
+  feelings: normalizeFeelings(undefined),
   privateDiary: [],
   sharedDiaryQueue: [],
   feed: [],
@@ -115,10 +124,14 @@ const DEFAULT_STATE = (): OlleWorldState => ({
   conversation: [],
   lastActivity: "idle",
   tickCount: 0,
+  hobbies: [],
+  survival: { hunger: 0.35 },
+  purse: { coins: 3, lifetime_earned: 3 },
+  inventory: [],
 });
 
-function migrateState(parsed: OlleWorldState): OlleWorldState {
-  return {
+function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): OlleWorldState {
+  const base = {
     ...DEFAULT_STATE(),
     ...parsed,
     inboundQueue: parsed.inboundQueue ?? [],
@@ -126,7 +139,21 @@ function migrateState(parsed: OlleWorldState): OlleWorldState {
     emailSends: parsed.emailSends ?? [],
     conversation: parsed.conversation ?? [],
     lastTickAt: parsed.lastTickAt,
-  };
+    hobbies: parsed.hobbies ?? [],
+    lastPrivateDiaryTick: parsed.lastPrivateDiaryTick,
+    survival: parsed.survival ?? { hunger: 0.35 },
+    purse: parsed.purse ?? { coins: 3, lifetime_earned: 3 },
+    inventory: parsed.inventory ?? [],
+    researchFetches: parsed.researchFetches ?? [],
+    lastResearch: parsed.lastResearch,
+  } as OlleWorldState;
+  base.feelings = normalizeFeelings(parsed.feelings);
+  if ((parsed.version ?? 1) < 2) {
+    ensureSurvivalState(base);
+  }
+  base.version = 3;
+  ensureSurvivalState(base);
+  return base;
 }
 
 export function defaultStatePath(): string {

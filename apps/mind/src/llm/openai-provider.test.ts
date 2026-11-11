@@ -1,25 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { SenseSnapshot } from "@olle/protocol";
 import { OpenAiProvider, type OpenAiClient } from "./openai-provider.js";
 import type { DecideContext } from "./types.js";
-
-const baseSense: SenseSnapshot = {
-  at: new Date().toISOString(),
-  olleDay: 1,
-  placement: { status: "unplaced" },
-  feelings: {
-    mood: 0.2,
-    energy: 0.8,
-    needs: { rest: 0.2, curiosity: 0.5, social: 0.4, expression: 0.3, quiet: 0.2 },
-    asleep: false,
-  },
-  threads: ["William"],
-  emailBudgetRemaining: 2,
-  openPermissionCount: 0,
-  recentFeedTail: [],
-  inboundSinceLastTick: 0,
-  unreadFromWilliam: 0,
-};
+import { baseSense } from "../test/sense-fixture.js";
 
 function mockClient(decideJson: string, speakText?: string): OpenAiClient {
   return {
@@ -56,7 +38,7 @@ function mockClient(decideJson: string, speakText?: string): OpenAiClient {
 
 describe("OpenAiProvider", () => {
   const ctx: DecideContext = {
-    sense: baseSense,
+    sense: baseSense(),
     legalActionIds: ["think_about", "continue_activity"],
     memorySnippets: ["remembered rain"],
   };
@@ -87,7 +69,7 @@ describe("OpenAiProvider", () => {
         params: { line: "test" },
         because: "expression",
       },
-      feelings: baseSense.feelings,
+      feelings: baseSense().feelings,
       memorySnippets: [],
       worldOk: true,
     });

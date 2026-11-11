@@ -27,6 +27,7 @@ export function maskLegalActionIds(options: {
   openPermissions: number;
   emailBudget: number;
   placementUnplaced: boolean;
+  webFetchesRemaining?: number;
 }): ActionId[] {
   const blocked = new Set<string>();
   if (options.asleep) {
@@ -40,6 +41,9 @@ export function maskLegalActionIds(options: {
   if (options.emailBudget <= 0) {
     blocked.add("notify_william");
     blocked.add("email_william");
+  }
+  if ((options.webFetchesRemaining ?? 1) <= 0) {
+    blocked.add("research_topic");
   }
   // Class C shared diary works while unplaced — only map etc. deferred
   for (const a of ACTION_MANIFEST) {
