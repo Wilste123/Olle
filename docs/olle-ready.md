@@ -6,7 +6,11 @@ Copy `.env.example` → `.env` and set:
 
 | Secret / value | Required? | Purpose |
 |----------------|-----------|---------|
-| `ANTHROPIC_API_KEY` | Optional | Claude decide + speak |
+| `OPENAI_API_KEY` | Optional (preferred) | ChatGPT decide + speak via OpenAI API |
+| `ANTHROPIC_API_KEY` | Optional | Claude decide + speak (alternative) |
+| `OLLE_LLM_PROVIDER` | Optional | `openai` \| `anthropic` \| `heuristic` — auto-picks OpenAI when `OPENAI_API_KEY` is set |
+| `OLLE_DECIDE_MODEL` | Optional | Default `gpt-4o-mini` (OpenAI) |
+| `OLLE_SPEAK_MODEL` | Optional | Default `gpt-4o-mini`; use `gpt-4o` for speak only if you want richer tone |
 | `WILLIAM_EMAIL` | **Yes** (email + inbound) | Outbound recipient + inbound allow-list |
 | `OLLE_INBOUND_ALLOWLIST` | Recommended | Comma-separated allowed reply senders (defaults to `WILLIAM_EMAIL`) |
 | `RESEND_API_KEY` + `OLLE_EMAIL_FROM` | Optional together | Real outbound mail; mock otherwise |
