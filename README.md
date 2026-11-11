@@ -35,6 +35,8 @@ apps/mind/           Mind loop + world/runtime (validate before speak)
 | **Speak** | Voice **after** world result; locked action, no re-choice | Second call |
 | **Sleep** | Consolidation batch only; no decide/speak | **No** |
 
+**Emotional parameters:** mood, energy, nine needs (rest, curiosity, social, expression, quiet, wonder, joy, comfort, sustenance synced from hunger), deterministic **feelingWords**, and **affection** toward William. Setbacks weigh ~7.5× wins in the feelings simulator (no LLM). Visible on `/dashboard` and `/api/now`.
+
 Feed entries follow Pino kinds: `did` / `noticed` / `felt` / `mind` with `why`, `ok`, `about`, `change`.
 
 **Placement:** Olle defaults to `{ status: "unplaced" }`. Mind ticks run fully while unplaced (private diary, rest, email stubs). Class C in Phase 0 is **shared diary proposals only** — no map pins or physical-world UI.
@@ -153,7 +155,7 @@ Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured
 
 **Inbound:** `npm start` exposes `POST /webhooks/email/inbound`. Route Resend inbound (or ngrok) to that path; body may be Resend JSON or `{ "from", "text" }`. Non-permission mail becomes **offerings** (queued for Sense).
 
-**Dashboard (Phase 1):** `GET /`, `/dashboard`, `/api/now`, `/api/feed`, `/api/audit` on the same port as inbound.
+**Dashboard (Phase 1):** `GET /`, `/dashboard`, `/diary`, `/api/now`, `/api/diary`, `/api/feed`, `/api/audit` on the same port as inbound. Private diary lines (William-readable) appear on the dashboard and in `/api/diary`.
 
 **Talk to Olle:** `GET /chat`, `POST /api/message` `{ "text": "..." }` (localhost or `OLLE_MESSAGE_TOKEN`), CLI `npm run olle -- say "hei olle"`. Replies land in `conversation` on the next mind tick (`reply_to_william`).
 

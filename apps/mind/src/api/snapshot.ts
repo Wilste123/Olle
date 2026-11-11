@@ -25,6 +25,28 @@ export interface NowSnapshot {
   survival: OlleWorldState["survival"];
   purse: OlleWorldState["purse"];
   inventorySummary: string;
+  /** Last 50 private diary lines, newest first (William-readable). */
+  privateDiaryTail: string[];
+}
+
+export const PRIVATE_DIARY_TAIL_LIMIT = 50;
+
+export function privateDiaryTailNewestFirst(state: OlleWorldState, limit = PRIVATE_DIARY_TAIL_LIMIT): string[] {
+  return [...state.privateDiary].slice(-limit).reverse();
+}
+
+export interface DiarySnapshot {
+  at: string;
+  private: string[];
+  shared: OlleWorldState["sharedDiaryQueue"];
+}
+
+export function buildDiarySnapshot(state: OlleWorldState): DiarySnapshot {
+  return {
+    at: new Date().toISOString(),
+    private: privateDiaryTailNewestFirst(state),
+    shared: state.sharedDiaryQueue.slice(-PRIVATE_DIARY_TAIL_LIMIT).reverse(),
+  };
 }
 
 export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
@@ -47,6 +69,7 @@ export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
     survival: state.survival,
     purse: state.purse,
     inventorySummary: inventorySummary(state),
+    privateDiaryTail: privateDiaryTailNewestFirst(state),
   };
 }
 

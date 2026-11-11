@@ -20,6 +20,9 @@ export function isSalientForDecide(
     return true;
   }
 
+  if (n.wonder > 0.62) return true;
+  if (n.joy < 0.28) return true;
+  if (n.comfort < 0.3) return true;
   if (sense.webFetchesRemaining > 0 && n.curiosity > 0.68) return true;
   if (n.social > 0.68 || n.expression > 0.72 || n.curiosity > 0.78) return true;
 

@@ -224,17 +224,29 @@ export interface DecideOutput {
   because: string;
 }
 
+export interface FeelingsNeeds {
+  rest: number;
+  curiosity: number;
+  social: number;
+  expression: number;
+  quiet: number;
+  /** Pino-adjacent: appetite for novelty / the web. */
+  wonder: number;
+  joy: number;
+  comfort: number;
+  /** Light mirror of survival.hunger (higher = hungrier). */
+  sustenance: number;
+}
+
 export interface FeelingsState {
   mood: number;
   energy: number;
-  needs: {
-    rest: number;
-    curiosity: number;
-    social: number;
-    expression: number;
-    quiet: number;
-  };
+  needs: FeelingsNeeds;
   asleep: boolean;
+  /** 2–3 labels refreshed each tick from thresholds. */
+  feelingWords: string[];
+  /** Bond toward William (0–1), slow drift on warm chat. */
+  affection: number;
 }
 
 export interface SenseSnapshot {

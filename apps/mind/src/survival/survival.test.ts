@@ -2,37 +2,15 @@ import { describe, expect, it } from "vitest";
 import { validateAct, applyAct } from "../world/runtime.js";
 import { tickHunger, HUNGER_RISE_PER_TICK } from "./hunger.js";
 import { buyFromSupply, grantItem, ensureSurvivalState } from "./inventory.js";
-import type { OlleWorldState } from "../world/store.js";
 import { createEmailAdapter } from "../email/adapter.js";
+import { emptyWorldState } from "../test/world-fixture.js";
 
-function base(): OlleWorldState {
-  return {
-    version: 2,
-    placement: { status: "unplaced" },
-    olleDay: 0,
-    feelings: {
-      mood: 0,
-      energy: 0.8,
-      needs: { rest: 0.2, curiosity: 0.3, social: 0.3, expression: 0.3, quiet: 0.2 },
-      asleep: false,
-    },
-    privateDiary: [],
-    sharedDiaryQueue: [],
-    feed: [],
-    permissions: [],
-    outbox: [],
-    audit: [],
-    inboundQueue: [],
-    memories: [],
-    emailSends: [],
-    conversation: [],
-    lastActivity: "idle",
+function base() {
+  return emptyWorldState({
     tickCount: 4,
-    hobbies: [],
     survival: { hunger: 0.5 },
     purse: { coins: 5, lifetime_earned: 5 },
-    inventory: [],
-  };
+  });
 }
 
 describe("hunger decay", () => {

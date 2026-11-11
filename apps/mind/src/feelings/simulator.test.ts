@@ -9,6 +9,13 @@ describe("feelings simulator", () => {
     expect(Math.abs(loss.mood - base.mood)).toBeGreaterThan(Math.abs(win.mood - base.mood));
   });
 
+  it("includes extended needs after tick", () => {
+    const after = tickFeelings(initFeelings(), { events: [], deltaSec: 10, wasResting: false });
+    expect(after.needs.wonder).toBeGreaterThan(0);
+    expect(after.feelingWords.length).toBeGreaterThan(0);
+    expect(after.affection).toBeGreaterThan(0);
+  });
+
   it("resting recovers energy", () => {
     const tired = { ...initFeelings(), energy: 0.3 };
     const after = tickFeelings(tired, { events: [], deltaSec: 60, wasResting: true });

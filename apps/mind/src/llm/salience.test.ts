@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { isSalientForDecide } from "./salience.js";
 import type { SenseSnapshot } from "@olle/protocol";
+import { normalizeFeelings } from "../feelings/normalize.js";
 
 function sense(needsOver: Partial<SenseSnapshot["feelings"]["needs"]> = {}): SenseSnapshot {
   return {
     at: "",
     olleDay: 0,
     placement: { status: "unplaced" },
-    feelings: {
+    feelings: normalizeFeelings({
       mood: 0,
       energy: 0.8,
-      needs: { rest: 0.2, curiosity: 0.3, social: 0.3, expression: 0.3, quiet: 0.2, ...needsOver },
-      asleep: false,
-    },
+      needs: { rest: 0.2, curiosity: 0.3, social: 0.3, expression: 0.3, quiet: 0.2, wonder: 0.4, joy: 0.4, comfort: 0.5, sustenance: 0.35, ...needsOver } as never,
+    }),
     threads: [],
     hobbies: [],
     ticksSinceLastPrivateDiary: 99,

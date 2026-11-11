@@ -3,12 +3,14 @@ import { loadOlleEnv } from "./env.js";
 import { handleInboundEmail } from "./inbound/handler.js";
 import {
   buildAuditSnapshot,
+  buildDiarySnapshot,
   buildFeedSnapshot,
   buildNowSnapshot,
 } from "./api/snapshot.js";
 import { getConversationJson, postWilliamMessage } from "./conversation/api.js";
 import { conversationForApi } from "./conversation/messages.js";
 import { renderChatPage } from "./dashboard/chat.js";
+import { renderDiaryPage } from "./dashboard/diary.js";
 import { renderDashboard } from "./dashboard/html.js";
 import { authorizeLocalMessage } from "./http/local-auth.js";
 import { loadState } from "./world/store.js";
@@ -85,6 +87,20 @@ export function createInboundServer(): http.Server {
     if (req.method === "GET" && urlPath === "/api/audit") {
       const state = await loadState();
       json(res, 200, { audit: buildAuditSnapshot(state) });
+      return;
+    }
+
+    if (req.method === "GET" && urlPath === "/api/diary") {
+      const state = await loadState();
+      json(res, 200, buildDiarySnapshot(state));
+      return;
+    }
+
+    if (req.method === "GET" && urlPath === "/diary") {
+      const state = await loadState();
+      const html = renderDiaryPage(buildDiarySnapshot(state));
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(html);
       return;
     }
 

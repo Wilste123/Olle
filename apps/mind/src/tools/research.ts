@@ -1,4 +1,5 @@
 import { bumpHobby, loudestHobbies } from "../hobbies/engine.js";
+import { applyNeedDelta } from "../feelings/simulator.js";
 import type { OlleWorldState } from "../world/store.js";
 import { searchWeb } from "./web-search.js";
 import { fetchHttpsPage } from "./web-fetch.js";
@@ -64,7 +65,7 @@ export async function runResearchTopic(
     bumpHobby(state, hot.id, 0.1, `research: ${query || page.url}`);
   }
 
-  state.feelings.needs.curiosity = Math.max(0, state.feelings.needs.curiosity - 0.12);
+  applyNeedDelta(state.feelings, { curiosity: -0.12, wonder: -0.15 });
 
   return {
     ok: true,

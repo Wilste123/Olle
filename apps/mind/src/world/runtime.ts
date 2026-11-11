@@ -1,7 +1,8 @@
 import { getAction, isClassDBlocked, type DecideOutput } from "@olle/protocol";
 import { validateDecideOutput } from "../decide/schema.js";
 import type { EmailAdapter } from "../email/adapter.js";
-import { enterSleep, tickFeelings, wake } from "../feelings/simulator.js";
+import { bumpAffectionTowardWilliam } from "../feelings/affection.js";
+import { applyNeedDelta, enterSleep, tickFeelings, wake } from "../feelings/simulator.js";
 import {
   canSendPermissionEmail,
   canSendProactiveEmail,
@@ -186,7 +187,7 @@ export async function applyAct(
         return { ok: false, rejectReason: "No hobby to nurse" };
       }
       bumpHobby(state, hobby.id, 0.12);
-      state.feelings.needs.curiosity = Math.max(0, state.feelings.needs.curiosity - 0.08);
+      applyNeedDelta(state.feelings, { curiosity: -0.08, wonder: -0.05 });
       state.lastActivity = `nursing: ${hobby.label}`;
       return { ok: true, pendingSpeakKind: "private_diary" };
     }
@@ -205,7 +206,7 @@ export async function applyAct(
         hobby = spawnHobby(state, label);
       }
       bumpHobby(state, hobby.id, 0.1);
-      state.feelings.needs.curiosity = Math.max(0, state.feelings.needs.curiosity - 0.1);
+      applyNeedDelta(state.feelings, { curiosity: -0.1, wonder: -0.08 });
       state.lastActivity = `wandering: ${hobby.label}`;
       return { ok: true, pendingSpeakKind: "private_diary" };
     }
@@ -221,7 +222,7 @@ export async function applyAct(
       return { ok: true, pendingSpeakKind: "private_diary" };
     }
     case "play_solo":
-      state.feelings.needs.expression = Math.max(0, state.feelings.needs.expression - 0.22);
+      applyNeedDelta(state.feelings, { expression: -0.22, joy: 0.18, wonder: -0.05 });
       state.feelings.mood = Math.min(1, state.feelings.mood + 0.05);
       state.lastActivity = `playing solo${params.mood ? `: ${String(params.mood)}` : ""}`;
       return { ok: true, pendingSpeakKind: "private_diary" };
@@ -234,6 +235,7 @@ export async function applyAct(
       }
       const delta = eaten.hunger_delta ?? -0.25;
       applyMeal(state, delta);
+      applyNeedDelta(state.feelings, { comfort: 0.15, sustenance: delta, joy: 0.05 });
       state.lastActivity = `eating: ${eaten.label}`;
       appendPinoFeed(state, "did", `Ate ${eaten.label}`, {
         ok: true,
@@ -424,6 +426,7 @@ export async function finalizeAct(
         .at(-1);
       appendOlleReply(state, replyText, inReplyTo || lastUnread?.id);
       markWilliamMessagesRead(state);
+      bumpAffectionTowardWilliam(state, 0.04);
       appendPinoFeed(state, "did", replyText, {
         why: decision.because,
         ok: true,

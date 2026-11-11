@@ -29,6 +29,14 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
     };
   }
 
+  if (sense.feelings.needs.comfort < 0.32 && legal.includes("rest")) {
+    return {
+      action_id: "rest",
+      params: { minutes: 4 },
+      because: "Comfort low — resting.",
+    };
+  }
+
   if (sense.feelings.energy < 0.35 && legal.includes("rest")) {
     return {
       action_id: "rest",
@@ -126,6 +134,40 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
       action_id: "play_solo",
       params: { mood: sense.feelings.mood > 0.2 ? "silly" : "quiet" },
       because: "Expression wants play, not another diary line.",
+    };
+  }
+
+  if (sense.feelings.needs.wonder > 0.62 && legal.includes("wander_curiosity")) {
+    const h = hottestHobby(sense);
+    return {
+      action_id: "wander_curiosity",
+      params: h ? { hobby_id: h.id } : {},
+      because: "Wonder is loud — wander a thread.",
+    };
+  }
+
+  if (
+    sense.feelings.needs.wonder > 0.55 &&
+    sense.feelings.needs.joy < 0.35 &&
+    legal.includes("play_solo")
+  ) {
+    return {
+      action_id: "play_solo",
+      params: { mood: "cheer" },
+      because: "Low joy — play solo first.",
+    };
+  }
+
+  if (
+    sense.feelings.needs.wonder > 0.58 &&
+    sense.webFetchesRemaining > 0 &&
+    legal.includes("research_topic") &&
+    williamUrl
+  ) {
+    return {
+      action_id: "research_topic",
+      params: { url: williamUrl },
+      because: "Wonder + a link — reading the web.",
     };
   }
 

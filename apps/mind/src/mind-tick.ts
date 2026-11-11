@@ -4,6 +4,8 @@ loadOlleEnv();
 import type { DecideOutput } from "@olle/protocol";
 import type { SenseSnapshot } from "@olle/protocol";
 import { tickFeelings } from "./feelings/simulator.js";
+import { syncSustenanceNeed } from "./feelings/normalize.js";
+import { deriveFeelingWords } from "./feelings/labels.js";
 import { createLlmProvider } from "./llm/factory.js";
 import {
   buildDecideContext,
@@ -84,6 +86,8 @@ export async function runMindTick(): Promise<TickResult> {
   ensureSurvivalState(state);
   decayHobbyHeat(state, 1);
   tickHunger(state, 1);
+  syncSustenanceNeed(state.feelings, state.survival.hunger);
+  state.feelings.feelingWords = deriveFeelingWords(state.feelings);
 
   const inboundProcessed = processInboundForTick(state);
   const memorySnippets = [

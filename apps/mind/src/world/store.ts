@@ -10,6 +10,7 @@ import type {
   SurvivalState,
 } from "@olle/protocol";
 import { ensureSurvivalState } from "../survival/inventory.js";
+import { normalizeFeelings } from "../feelings/normalize.js";
 import { PERMISSION_TTL_MS } from "@olle/protocol";
 
 /** Pino-style feed kinds. */
@@ -72,7 +73,7 @@ export interface ConversationMessage {
 }
 
 export interface OlleWorldState {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   placement: Placement;
   olleDay: number;
   feelings: FeelingsState;
@@ -107,21 +108,10 @@ export interface OlleWorldState {
 }
 
 const DEFAULT_STATE = (): OlleWorldState => ({
-  version: 2,
+  version: 3,
   placement: { status: "unplaced" },
   olleDay: 0,
-  feelings: {
-    mood: 0.1,
-    energy: 0.75,
-    needs: {
-      rest: 0.3,
-      curiosity: 0.5,
-      social: 0.4,
-      expression: 0.35,
-      quiet: 0.2,
-    },
-    asleep: false,
-  },
+  feelings: normalizeFeelings(undefined),
   privateDiary: [],
   sharedDiaryQueue: [],
   feed: [],
@@ -157,11 +147,12 @@ function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): O
     researchFetches: parsed.researchFetches ?? [],
     lastResearch: parsed.lastResearch,
   } as OlleWorldState;
+  base.feelings = normalizeFeelings(parsed.feelings);
   if ((parsed.version ?? 1) < 2) {
-    base.version = 2;
     ensureSurvivalState(base);
   }
-  if (base.version === 1) base.version = 2;
+  base.version = 3;
+  ensureSurvivalState(base);
   return base;
 }
 

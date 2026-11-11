@@ -1,16 +1,12 @@
 import type { OlleWorldState } from "../world/store.js";
+import { normalizeFeelings } from "../feelings/normalize.js";
 
 export function emptyWorldState(over: Partial<OlleWorldState> = {}): OlleWorldState {
   return {
-    version: 2,
+    version: 3,
     placement: { status: "unplaced" },
     olleDay: 0,
-    feelings: {
-      mood: 0,
-      energy: 0.8,
-      needs: { rest: 0.2, curiosity: 0.3, social: 0.3, expression: 0.3, quiet: 0.2 },
-      asleep: false,
-    },
+    feelings: normalizeFeelings({ mood: 0, energy: 0.8 }),
     privateDiary: [],
     sharedDiaryQueue: [],
     feed: [],
