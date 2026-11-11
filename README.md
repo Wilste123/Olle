@@ -48,7 +48,7 @@ Feed entries follow Pino kinds: `did` / `noticed` / `felt` / `mind` with `why`, 
 1. `cp .env.example .env` — secrets only in `.env` (never committed).
 2. `npm install && npm run build && npm test` — all green.
 3. `npm start` — continuous mind loop **and** inbound webhook (`:8787/webhooks/email/inbound`).
-4. Without `ANTHROPIC_API_KEY` — heuristic mind still ticks; with key — Claude decide/speak.
+4. Without API keys — heuristic mind still ticks; with `OPENAI_API_KEY` (default) or `ANTHROPIC_API_KEY` — LLM decide/speak.
 5. Permission E2E — Class C → email mock or Resend → `olle permit approve <id>` **or** inbound `YES <id>` → shared diary `published`.
 
 Details: [docs/olle-ready.md](docs/olle-ready.md).
@@ -89,7 +89,7 @@ npm run olle -- permit deny <request-id>
 
 Matches [Pino Protocol](https://protocol.pinos.world/) ordering: **world validates the act before speak text is generated**.
 
-1. **Decide** (`HeuristicProvider` | `AnthropicProvider`) — feelings, legal manifest actions, memory snippets. Output `{ action_id, params, because }`; world `validateAct` runs next (not inside the LLM).
+1. **Decide** (`HeuristicProvider` | `OpenAiProvider` | `AnthropicProvider`) — feelings, legal manifest actions, memory snippets. Output `{ action_id, params, because }`; world `validateAct` runs next (not inside the LLM).
 2. **World** — `applyAct` mutates state / permission queue; failures log `did` with `ok: false`.
 3. **Speak** — separate call with **locked** action + `world_ok`; must not pick a new action. Prose hits the world in `finalizeAct` (diary lines, email bodies).
 
@@ -99,14 +99,15 @@ Matches [Pino Protocol](https://protocol.pinos.world/) ordering: **world validat
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `ANTHROPIC_API_KEY` | — | Enables Claude |
-| `OLLE_LLM_PROVIDER` | `anthropic` if key set, else `heuristic` | `anthropic` \| `heuristic` \| `openai` (stub) |
-| `OLLE_DECIDE_MODEL` | `claude-haiku-4-5-20251001` | Fast structured decide |
-| `OLLE_SPEAK_MODEL` | `claude-sonnet-4-5-20250929` | Character speak |
+| `OPENAI_API_KEY` | — | Enables ChatGPT (OpenAI API) — **preferred** |
+| `ANTHROPIC_API_KEY` | — | Enables Claude (alternative) |
+| `OLLE_LLM_PROVIDER` | `openai` if OpenAI key set, else `anthropic` if Anthropic key, else `heuristic` | `openai` \| `anthropic` \| `heuristic` |
+| `OLLE_DECIDE_MODEL` | `gpt-4o-mini` (OpenAI) or `claude-haiku-4-5-20251001` (Anthropic) | Fast structured decide |
+| `OLLE_SPEAK_MODEL` | `gpt-4o-mini` (OpenAI) or `claude-sonnet-4-5-20250929` (Anthropic) | Character speak; try `gpt-4o` for richer OpenAI speak only |
 
-**Rough cost (personal use):** With idle skip, expect on the order of tens of decide calls per day → well under a dollar/day on Haiku decide + occasional Sonnet speak. Continuous 30s ticks without salience mostly cost **zero** LLM tokens.
+**Rough cost (personal use):** With idle skip, expect on the order of tens of decide calls per day → well under a dollar/day on `gpt-4o-mini` / Haiku decide + occasional `gpt-4o` or Sonnet speak. Continuous 30s ticks without salience mostly cost **zero** LLM tokens.
 
-No `ANTHROPIC_API_KEY` → full **heuristic** path (no network, deterministic).
+No API keys → full **heuristic** path (no network, deterministic).
 
 ## Environment variables
 
