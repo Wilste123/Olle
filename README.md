@@ -43,26 +43,44 @@ Feed entries follow Pino kinds: `did` / `noticed` / `felt` / `mind` with `why`, 
 
 **Class D** actions (e.g. `add_map_pin`) exist in the manifest but are **blocked in code**.
 
+## Olle is ready when…
+
+1. `cp .env.example .env` — secrets only in `.env` (never committed).
+2. `npm install && npm run build && npm test` — all green.
+3. `npm start` — continuous mind loop **and** inbound webhook (`:8787/webhooks/email/inbound`).
+4. Without `ANTHROPIC_API_KEY` — heuristic mind still ticks; with key — Claude decide/speak.
+5. Permission E2E — Class C → email mock or Resend → `olle permit approve <id>` **or** inbound `YES <id>` → shared diary `published`.
+
+Details: [docs/olle-ready.md](docs/olle-ready.md).
+
 ## Quick start
 
 ```bash
+cp .env.example .env   # set WILLIAM_EMAIL at minimum
 npm install
 npm run build
 npm test
-npm run tick          # one mind tick
-npm run olle -- tick  # same via CLI wrapper
+npm start            # live Olle (tick loop + inbound server)
 ```
 
-Continuous loop (30s default):
+One-shot tick (debug):
 
 ```bash
-OLLE_TICK_MS=15000 npx tsx apps/mind/src/tick-loop.ts
-```
-
-Permissions:
-
-```bash
+npm run tick
 npm run olle -- status
+```
+
+Inbound permission reply (local dev):
+
+```bash
+curl -X POST http://127.0.0.1:8787/webhooks/email/inbound \
+  -H 'content-type: application/json' \
+  -d '{"from":"you@example.com","text":"YES req-abc123"}'
+```
+
+CLI permissions:
+
+```bash
 npm run olle -- permit approve <request-id>
 npm run olle -- permit deny <request-id>
 ```
@@ -92,16 +110,17 @@ No `ANTHROPIC_API_KEY` → full **heuristic** path (no network, deterministic).
 
 ## Environment variables
 
+See **`.env.example`** for every variable. Highlights:
+
 | Variable | Purpose |
 |----------|---------|
-| `OLLE_STATE_PATH` | Path to JSON state (default: `./.olle-state.json`) |
-| `OLLE_TICK_MS` | Loop interval when running `tick-loop.ts` |
-| `OLLE_VERBOSE` | `1` logs mock email subjects |
-| `RESEND_API_KEY` | Real outbound email via Resend |
-| `OLLE_EMAIL_FROM` | From address (e.g. `olle@yourdomain.com`) |
-| `WILLIAM_EMAIL` | Recipient allow-list default |
+| `WILLIAM_EMAIL` | Outbound to William; inbound allow-list default |
+| `OLLE_INBOUND_ALLOWLIST` | Comma-separated inbound senders |
+| `OLLE_INBOUND_PORT` | Default `8787` |
+| `RESEND_API_KEY` + `OLLE_EMAIL_FROM` | Real outbound (both required with `WILLIAM_EMAIL`) |
+| `OLLE_STATE_PATH` / `OLLE_TICK_MS` | State file and tick interval |
 
-See **AI architecture** above for LLM env vars. Without keys, Olle runs in **dry/mock mode** (heuristic decide + mock email).
+Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured.
 
 ## Actions (Phase 0)
 
@@ -110,9 +129,11 @@ See **AI architecture** above for LLM env vars. Without keys, Olle runs in **dry
 - **Class C:** `propose_shared_diary_entry` (permission-gated)
 - **Class D:** `add_map_pin` — blocked
 
-## Resend (not wired in Phase 0 beyond adapter)
+## Resend (outbound + inbound)
 
-To send real email, set `RESEND_API_KEY` and `OLLE_EMAIL_FROM`. Inbound webhooks and YES/NO parsing from email are **not** hooked to HTTP yet; use CLI `olle permit` or call `parsePermissionReply()` from inbound text in a future webhook.
+**Outbound:** set `RESEND_API_KEY`, `OLLE_EMAIL_FROM`, and `WILLIAM_EMAIL`.
+
+**Inbound:** `npm start` exposes `POST /webhooks/email/inbound`. Route Resend inbound (or ngrok) to that path; body may be Resend JSON or `{ "from", "text" }`.
 
 ## Repo layout
 

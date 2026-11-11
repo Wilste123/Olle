@@ -16,9 +16,11 @@ export class MockEmailAdapter implements EmailAdapter {
 
   async send(msg: OutboundEmail): Promise<void> {
     this.sent.push(msg);
-    if (process.env.OLLE_VERBOSE === "1") {
-      console.log("[mock-email]", msg.subject);
-    }
+    console.log("[mock-email] WOULD SEND", {
+      to: msg.to,
+      subject: msg.subject,
+      bodyPreview: msg.body.slice(0, 120).replace(/\n/g, " "),
+    });
   }
 
   async sendPermissionRequest(req: PermissionRequestRecord): Promise<void> {
@@ -91,7 +93,15 @@ export class ResendEmailAdapter implements EmailAdapter {
 
 export function createEmailAdapter(): EmailAdapter {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.OLLE_EMAIL_FROM ?? "olle@example.com";
-  if (key) return new ResendEmailAdapter(key, from);
+  const from = process.env.OLLE_EMAIL_FROM;
+  const william = process.env.WILLIAM_EMAIL;
+  if (key && from && william) {
+    return new ResendEmailAdapter(key, from);
+  }
+  if (key || from) {
+    console.warn(
+      "[olle-email] Resend partial config — using mock. Set RESEND_API_KEY, OLLE_EMAIL_FROM, and WILLIAM_EMAIL.",
+    );
+  }
   return new MockEmailAdapter();
 }

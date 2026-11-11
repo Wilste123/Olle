@@ -1,3 +1,6 @@
+import { loadOlleEnv } from "./env.js";
+loadOlleEnv();
+
 import type { DecideOutput } from "@olle/protocol";
 import type { SenseSnapshot } from "@olle/protocol";
 import { tickFeelings } from "./feelings/simulator.js";

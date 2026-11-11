@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { loadOlleEnv } from "./env.js";
+loadOlleEnv();
+
 import { executeGrantedPermission } from "./act/executor.js";
 import { loadState, resolvePermission, saveState } from "./world/store.js";
 import { runMindTick } from "./mind-tick.js";
@@ -64,7 +67,7 @@ Usage:
   olle permit deny <request-id>
   olle status
 
-Run loop: npm run tick -w @olle/mind -- (once) or tsx src/tick-loop.ts
+Live Olle: npm start (from repo root)
 `);
 }
 

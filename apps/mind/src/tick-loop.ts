@@ -1,8 +1,12 @@
+import { loadOlleEnv } from "./env.js";
 import { runMindTick } from "./mind-tick.js";
+
+loadOlleEnv();
 
 const intervalMs = Number(process.env.OLLE_TICK_MS ?? 30_000);
 
-async function loop(): Promise<void> {
+export async function startTickLoop(): Promise<void> {
+  console.log(`[olle-mind] tick loop every ${intervalMs}ms`);
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
@@ -27,4 +31,9 @@ async function loop(): Promise<void> {
   }
 }
 
-loop();
+const isMain =
+  process.argv[1]?.endsWith("tick-loop.ts") || process.argv[1]?.endsWith("tick-loop.js");
+
+if (isMain) {
+  startTickLoop();
+}

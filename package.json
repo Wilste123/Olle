@@ -10,7 +10,9 @@
     "typecheck": "npm run typecheck -w @olle/protocol && npm run typecheck -w @olle/mind",
     "test": "npm run test -w @olle/mind",
     "tick": "npm run tick -w @olle/mind",
-    "olle": "npm run olle -w @olle/mind"
+    "olle": "npm run olle -w @olle/mind",
+    "start": "npm run start -w @olle/mind",
+    "inbound": "npm run inbound -w @olle/mind"
   },
   "engines": {
     "node": ">=20"

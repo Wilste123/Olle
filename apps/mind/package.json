@@ -10,11 +10,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "tick": "tsx src/tick-once.ts",
-    "olle": "tsx src/cli.ts"
+    "olle": "tsx src/cli.ts",
+    "start": "tsx src/start.ts",
+    "inbound": "tsx src/inbound-server.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
-    "@olle/protocol": "*"
+    "@olle/protocol": "*",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
