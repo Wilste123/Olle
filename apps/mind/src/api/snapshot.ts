@@ -5,6 +5,7 @@ import { loudestHobbies } from "../hobbies/engine.js";
 import { getEmailBudgetRemaining } from "../email/rate-limits.js";
 import { countUnreadFromWilliam } from "../conversation/messages.js";
 import { countUnprocessedInbound } from "../inbound/offering.js";
+import { resolveLlmProviderName } from "../llm/factory.js";
 
 export interface NowSnapshot {
   at: string;
@@ -27,6 +28,9 @@ export interface NowSnapshot {
   inventorySummary: string;
   /** Last 50 private diary lines, newest first (William-readable). */
   privateDiaryTail: string[];
+  llmProvider: "heuristic" | "openai" | "anthropic";
+  /** Shown on dashboard when running without API keys. */
+  llmProviderHint?: string;
 }
 
 export const PRIVATE_DIARY_TAIL_LIMIT = 50;
@@ -70,6 +74,11 @@ export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
     purse: state.purse,
     inventorySummary: inventorySummary(state),
     privateDiaryTail: privateDiaryTailNewestFirst(state),
+    llmProvider: resolveLlmProviderName(),
+    llmProviderHint:
+      resolveLlmProviderName() === "heuristic"
+        ? "Heuristic mode — set OPENAI_API_KEY (or OLLE_LLM_PROVIDER=openai) in .env and restart for richer speak."
+        : undefined,
   };
 }
 
