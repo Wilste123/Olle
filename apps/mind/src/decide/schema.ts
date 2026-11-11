@@ -39,6 +39,7 @@ export function maskLegalActionIds(options: {
   }
   if (options.emailBudget <= 0) {
     blocked.add("notify_william");
+    blocked.add("email_william");
   }
   // Class C shared diary works while unplaced — only map etc. deferred
   for (const a of ACTION_MANIFEST) {

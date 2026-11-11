@@ -22,6 +22,13 @@ import {
 } from "./world/store.js";
 import { applyAct, finalizeAct, validateAct } from "./world/runtime.js";
 import { createEmailAdapter } from "./email/adapter.js";
+import { getEmailBudgetRemaining } from "./email/rate-limits.js";
+import {
+  countUnreadFromWilliam,
+  latestUnreadWilliamPreview,
+  williamUnreadSinceLastTick,
+} from "./conversation/messages.js";
+import { processInboundForTick } from "./inbound/offering.js";
 
 export interface TickResult {
   decision?: DecideOutput;
@@ -62,7 +69,11 @@ export async function runMindTick(): Promise<TickResult> {
     return { asleep: true };
   }
 
-  const memorySnippets = state.privateDiary.slice(-5);
+  const inboundProcessed = processInboundForTick(state);
+  const memorySnippets = [
+    ...state.memories.slice(-5).map((m) => m.text),
+    ...state.privateDiary.slice(-5),
+  ].slice(-8);
 
   const sense: SenseSnapshot = {
     at: new Date().toISOString(),
@@ -70,10 +81,12 @@ export async function runMindTick(): Promise<TickResult> {
     placement: state.placement,
     feelings: state.feelings,
     threads: ["William", "today"],
-    emailBudgetRemaining: 2,
+    emailBudgetRemaining: getEmailBudgetRemaining(state),
     openPermissionCount: getOpenPermissionCount(state),
     recentFeedTail: state.feed.slice(-5).map((f) => f.text),
-    inboundSinceLastTick: 0,
+    inboundSinceLastTick: inboundProcessed.newCount + williamUnreadSinceLastTick(state),
+    unreadFromWilliam: countUnreadFromWilliam(state),
+    williamMessagePreview: latestUnreadWilliamPreview(state),
   };
 
   const salient = shouldDecideBeSalient(
@@ -152,6 +165,7 @@ export async function runMindTick(): Promise<TickResult> {
   }
 
   state.tickCount += 1;
+  state.lastTickAt = new Date().toISOString();
   await saveState(state);
 
   return {

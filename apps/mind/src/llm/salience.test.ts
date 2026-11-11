@@ -18,8 +18,17 @@ function sense(needsOver: Partial<SenseSnapshot["feelings"]["needs"]> = {}): Sen
     openPermissionCount: 0,
     recentFeedTail: [],
     inboundSinceLastTick: 0,
+    unreadFromWilliam: 0,
   };
 }
+
+describe("william unread", () => {
+  it("is salient when unread messages", () => {
+    const s = sense();
+    s.unreadFromWilliam = 1;
+    expect(isSalientForDecide(s, "idle", 1)).toBe(true);
+  });
+});
 
 describe("isSalientForDecide", () => {
   it("skips when continuing same activity", () => {

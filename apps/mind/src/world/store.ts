@@ -31,6 +31,41 @@ export interface SharedDiaryEntry {
   created_at: string;
 }
 
+export interface InboundOffering {
+  id: string;
+  from: string;
+  subject: string;
+  snippet: string;
+  text: string;
+  received_at: string;
+  processed_at?: string;
+}
+
+export interface MemorySlot {
+  key: string;
+  text: string;
+  strength: number;
+  updated_at: string;
+  source?: string;
+}
+
+export interface EmailSendRecord {
+  at: string;
+  kind: "proactive" | "permission";
+}
+
+export type MessageChannel = "dashboard" | "cli" | "email";
+
+export interface ConversationMessage {
+  id: string;
+  from: "william" | "olle";
+  text: string;
+  at: string;
+  channel: MessageChannel;
+  read_by_olle?: boolean;
+  in_reply_to?: string;
+}
+
 export interface OlleWorldState {
   version: 1;
   placement: Placement;
@@ -42,6 +77,11 @@ export interface OlleWorldState {
   permissions: PermissionRequestRecord[];
   outbox: { subject: string; body: string; at: string }[];
   audit: { at: string; kind: string; detail: Record<string, unknown> }[];
+  inboundQueue: InboundOffering[];
+  memories: MemorySlot[];
+  emailSends: EmailSendRecord[];
+  conversation: ConversationMessage[];
+  lastTickAt?: string;
   lastActivity: string;
   lastDecisionActionId?: string;
   tickCount: number;
@@ -69,9 +109,25 @@ const DEFAULT_STATE = (): OlleWorldState => ({
   permissions: [],
   outbox: [],
   audit: [],
+  inboundQueue: [],
+  memories: [],
+  emailSends: [],
+  conversation: [],
   lastActivity: "idle",
   tickCount: 0,
 });
+
+function migrateState(parsed: OlleWorldState): OlleWorldState {
+  return {
+    ...DEFAULT_STATE(),
+    ...parsed,
+    inboundQueue: parsed.inboundQueue ?? [],
+    memories: parsed.memories ?? [],
+    emailSends: parsed.emailSends ?? [],
+    conversation: parsed.conversation ?? [],
+    lastTickAt: parsed.lastTickAt,
+  };
+}
 
 export function defaultStatePath(): string {
   return process.env.OLLE_STATE_PATH ?? join(process.cwd(), ".olle-state.json");
@@ -80,7 +136,7 @@ export function defaultStatePath(): string {
 export async function loadState(path = defaultStatePath()): Promise<OlleWorldState> {
   try {
     const raw = await readFile(path, "utf8");
-    return JSON.parse(raw) as OlleWorldState;
+    return migrateState(JSON.parse(raw) as OlleWorldState);
   } catch {
     return DEFAULT_STATE();
   }

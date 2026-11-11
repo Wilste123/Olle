@@ -18,6 +18,7 @@ const baseSense: SenseSnapshot = {
   openPermissionCount: 0,
   recentFeedTail: [],
   inboundSinceLastTick: 0,
+  unreadFromWilliam: 0,
 };
 
 function mockClient(decideJson: string, speakText?: string): OpenAiClient {

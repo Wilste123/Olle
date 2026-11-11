@@ -1,4 +1,4 @@
-# Olle — ready for William (v0.1)
+# Olle — ready for William (v0.2 Phase 1)
 
 ## One-time configuration
 
@@ -14,7 +14,9 @@ Copy `.env.example` → `.env` and set:
 | `WILLIAM_EMAIL` | **Yes** (email + inbound) | Outbound recipient + inbound allow-list |
 | `OLLE_INBOUND_ALLOWLIST` | Recommended | Comma-separated allowed reply senders (defaults to `WILLIAM_EMAIL`) |
 | `RESEND_API_KEY` + `OLLE_EMAIL_FROM` | Optional together | Real outbound mail; mock otherwise |
-| Resend inbound route | Production | Point webhook to `https://<host>:<port>/webhooks/email/inbound` |
+| `OLLE_QUIET_HOURS` | Optional | e.g. `22:00-08:00` — no proactive email in window |
+| `OLLE_QUIET_TZ` | Optional | Default `Europe/Oslo` |
+| Resend inbound route | Production | Point webhook to `https://<tunnel>/webhooks/email/inbound` |
 
 ## Daily commands
 
@@ -25,8 +27,20 @@ cp .env.example .env   # edit
 npm install
 npm run build
 npm test
-npm start              # mind loop + inbound server
+npm start              # mind loop + inbound server + dashboard
 ```
+
+Open **http://127.0.0.1:8787/dashboard** (or `/api/now`, `/api/feed`, `/api/audit`). **Prat:** `/chat` eller `olle say "…"`.
+
+## Email rate limits (Phase 1)
+
+- Proactive: **2 / 24h** soft (decide masking), **4 / 24h** hard, **4h** min gap
+- Permission emails: **3 / 24h** (still sent during quiet hours)
+- Quiet hours: set `OLLE_QUIET_HOURS` — proactive sends blocked; audit logs `email_suppressed`
+
+## Inbound offerings
+
+Non–YES/NO messages enqueue for the next mind tick; Olle **remembers** a snippet in `memories` and Sense sees `inboundSinceLastTick`.
 
 ## Permission flow check
 

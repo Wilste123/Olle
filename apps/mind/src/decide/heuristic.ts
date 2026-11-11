@@ -26,6 +26,35 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
     };
   }
 
+  if (sense.unreadFromWilliam > 0 && legal.includes("reply_to_william")) {
+    return {
+      action_id: "reply_to_william",
+      params: {},
+      because: sense.williamMessagePreview
+        ? `William wrote: ${sense.williamMessagePreview.slice(0, 80)}`
+        : "William sent a message.",
+    };
+  }
+
+  if (
+    sense.inboundSinceLastTick > 0 &&
+    legal.includes("remember")
+  ) {
+    return {
+      action_id: "remember",
+      params: { key: "last_william_email", delta: 0.2 },
+      because: "William sent something — strengthening memory.",
+    };
+  }
+
+  if (sense.inboundSinceLastTick > 0 && legal.includes("think_about")) {
+    return {
+      action_id: "think_about",
+      params: { topic: "what William wrote" },
+      because: "New inbound email to reflect on.",
+    };
+  }
+
   if (sense.feelings.needs.expression > 0.7 && legal.includes("append_private_diary")) {
     return {
       action_id: "append_private_diary",

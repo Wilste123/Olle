@@ -10,6 +10,7 @@ export function isSalientForDecide(
 ): boolean {
   if (sense.feelings.asleep) return false;
   if (sense.inboundSinceLastTick > 0) return true;
+  if (sense.unreadFromWilliam > 0) return true;
   if (sense.feelings.energy < 0.35) return true;
   if (Math.abs(sense.feelings.mood) > 0.55) return true;
 
