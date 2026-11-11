@@ -1,5 +1,6 @@
 import type { OlleWorldState } from "../world/store.js";
 import { getEmailBudgetRemaining } from "../email/rate-limits.js";
+import { countUnreadFromWilliam } from "../conversation/messages.js";
 import { countUnprocessedInbound } from "../inbound/offering.js";
 
 export interface NowSnapshot {
@@ -14,6 +15,8 @@ export interface NowSnapshot {
   inboundPending: number;
   memories: OlleWorldState["memories"];
   outboxTail: OlleWorldState["outbox"];
+  unreadFromWilliam: number;
+  conversationTail: OlleWorldState["conversation"];
 }
 
 export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
@@ -29,6 +32,8 @@ export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
     inboundPending: countUnprocessedInbound(state),
     memories: state.memories.slice(-12),
     outboxTail: state.outbox.slice(-5),
+    unreadFromWilliam: countUnreadFromWilliam(state),
+    conversationTail: (state.conversation ?? []).slice(-8),
   };
 }
 

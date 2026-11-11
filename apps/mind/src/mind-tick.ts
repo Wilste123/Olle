@@ -23,6 +23,11 @@ import {
 import { applyAct, finalizeAct, validateAct } from "./world/runtime.js";
 import { createEmailAdapter } from "./email/adapter.js";
 import { getEmailBudgetRemaining } from "./email/rate-limits.js";
+import {
+  countUnreadFromWilliam,
+  latestUnreadWilliamPreview,
+  williamUnreadSinceLastTick,
+} from "./conversation/messages.js";
 import { processInboundForTick } from "./inbound/offering.js";
 
 export interface TickResult {
@@ -79,7 +84,9 @@ export async function runMindTick(): Promise<TickResult> {
     emailBudgetRemaining: getEmailBudgetRemaining(state),
     openPermissionCount: getOpenPermissionCount(state),
     recentFeedTail: state.feed.slice(-5).map((f) => f.text),
-    inboundSinceLastTick: inboundProcessed.newCount,
+    inboundSinceLastTick: inboundProcessed.newCount + williamUnreadSinceLastTick(state),
+    unreadFromWilliam: countUnreadFromWilliam(state),
+    williamMessagePreview: latestUnreadWilliamPreview(state),
   };
 
   const salient = shouldDecideBeSalient(
@@ -158,6 +165,7 @@ export async function runMindTick(): Promise<TickResult> {
   }
 
   state.tickCount += 1;
+  state.lastTickAt = new Date().toISOString();
   await saveState(state);
 
   return {

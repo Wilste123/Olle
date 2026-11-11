@@ -26,6 +26,16 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
     };
   }
 
+  if (sense.unreadFromWilliam > 0 && legal.includes("reply_to_william")) {
+    return {
+      action_id: "reply_to_william",
+      params: {},
+      because: sense.williamMessagePreview
+        ? `William wrote: ${sense.williamMessagePreview.slice(0, 80)}`
+        : "William sent a message.",
+    };
+  }
+
   if (
     sense.inboundSinceLastTick > 0 &&
     legal.includes("remember")

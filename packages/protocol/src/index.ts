@@ -63,6 +63,18 @@ export const ACTION_MANIFEST: readonly ActionDefinition[] = [
     paramsSchema: { subject: "string", body: "string" },
   },
   {
+    id: "reply_to_william",
+    class: "B",
+    description: "Reply in the conversation thread (dashboard); speak generates text",
+    paramsSchema: { in_reply_to: "optional_string" },
+  },
+  {
+    id: "email_william",
+    class: "B",
+    description: "Send William an email reply (rate-limited; use after conversation reply optional)",
+    paramsSchema: { subject: "string", body: "string" },
+  },
+  {
     id: "propose_shared_diary_entry",
     class: "C",
     description: "Propose a shared diary entry (requires permission)",
@@ -119,6 +131,8 @@ export interface SenseSnapshot {
   openPermissionCount: number;
   recentFeedTail: string[];
   inboundSinceLastTick: number;
+  unreadFromWilliam: number;
+  williamMessagePreview?: string;
 }
 
 export interface PermissionRequestRecord {

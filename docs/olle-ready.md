@@ -30,7 +30,7 @@ npm test
 npm start              # mind loop + inbound server + dashboard
 ```
 
-Open **http://127.0.0.1:8787/dashboard** (or `/api/now`, `/api/feed`, `/api/audit`).
+Open **http://127.0.0.1:8787/dashboard** (or `/api/now`, `/api/feed`, `/api/audit`). **Prat:** `/chat` eller `olle say "…"`.
 
 ## Email rate limits (Phase 1)
 

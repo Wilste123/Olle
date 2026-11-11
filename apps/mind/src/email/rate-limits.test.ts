@@ -27,6 +27,7 @@ function emptyState(): OlleWorldState {
     inboundQueue: [],
     memories: [],
     emailSends: [],
+    conversation: [],
     lastActivity: "idle",
     tickCount: 0,
   };

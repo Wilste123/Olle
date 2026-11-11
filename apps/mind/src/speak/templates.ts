@@ -7,7 +7,10 @@ export function speakAfterDecide(decision: DecideOutput, feelings: FeelingsState
     case "append_private_diary":
       return `*(private)* ${String(decision.params.line ?? "")} — felt ${moodWord}.`;
     case "notify_william":
+    case "email_william":
       return String(decision.params.body ?? "");
+    case "reply_to_william":
+      return `Hei William — ${decision.because} (mood: ${moodWord}).`;
     case "propose_shared_diary_entry":
       return `I'd like to add to our shared diary when you approve: "${String(decision.params.title ?? "")}"`;
     case "rest":

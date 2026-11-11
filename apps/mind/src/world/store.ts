@@ -54,6 +54,18 @@ export interface EmailSendRecord {
   kind: "proactive" | "permission";
 }
 
+export type MessageChannel = "dashboard" | "cli" | "email";
+
+export interface ConversationMessage {
+  id: string;
+  from: "william" | "olle";
+  text: string;
+  at: string;
+  channel: MessageChannel;
+  read_by_olle?: boolean;
+  in_reply_to?: string;
+}
+
 export interface OlleWorldState {
   version: 1;
   placement: Placement;
@@ -68,6 +80,8 @@ export interface OlleWorldState {
   inboundQueue: InboundOffering[];
   memories: MemorySlot[];
   emailSends: EmailSendRecord[];
+  conversation: ConversationMessage[];
+  lastTickAt?: string;
   lastActivity: string;
   lastDecisionActionId?: string;
   tickCount: number;
@@ -98,6 +112,7 @@ const DEFAULT_STATE = (): OlleWorldState => ({
   inboundQueue: [],
   memories: [],
   emailSends: [],
+  conversation: [],
   lastActivity: "idle",
   tickCount: 0,
 });
@@ -109,6 +124,8 @@ function migrateState(parsed: OlleWorldState): OlleWorldState {
     inboundQueue: parsed.inboundQueue ?? [],
     memories: parsed.memories ?? [],
     emailSends: parsed.emailSends ?? [],
+    conversation: parsed.conversation ?? [],
+    lastTickAt: parsed.lastTickAt,
   };
 }
 

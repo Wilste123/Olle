@@ -139,6 +139,8 @@ Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured
 
 **Dashboard (Phase 1):** `GET /`, `/dashboard`, `/api/now`, `/api/feed`, `/api/audit` on the same port as inbound.
 
+**Talk to Olle:** `GET /chat`, `POST /api/message` `{ "text": "..." }` (localhost or `OLLE_MESSAGE_TOKEN`), CLI `npm run olle -- say "hei olle"`. Replies land in `conversation` on the next mind tick (`reply_to_william`).
+
 ## Repo layout
 
 ```text

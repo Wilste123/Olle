@@ -2,6 +2,7 @@ import { parsePermissionReply } from "../permission/parser.js";
 import { processPermissionReply } from "../permission/inbound.js";
 import { isAllowedInboundSender } from "../permission/inbound.js";
 import { loadState, saveState } from "../world/store.js";
+import { appendWilliamMessage } from "../conversation/messages.js";
 import { enqueueInboundOffering } from "./offering.js";
 
 export interface InboundPayload {
@@ -24,10 +25,12 @@ export async function handleInboundEmail(
   }
 
   const state = await loadState();
+  const body = payload.text;
+  appendWilliamMessage(state, body, "email");
   const offering = enqueueInboundOffering(state, {
     from: payload.from,
     subject: payload.subject ?? "",
-    text: payload.text,
+    text: body,
   });
   await saveState(state);
   return {

@@ -6,7 +6,11 @@ import {
   buildFeedSnapshot,
   buildNowSnapshot,
 } from "./api/snapshot.js";
+import { getConversationJson, postWilliamMessage } from "./conversation/api.js";
+import { conversationForApi } from "./conversation/messages.js";
+import { renderChatPage } from "./dashboard/chat.js";
 import { renderDashboard } from "./dashboard/html.js";
+import { authorizeLocalMessage } from "./http/local-auth.js";
 import { loadState } from "./world/store.js";
 
 loadOlleEnv();
@@ -84,6 +88,40 @@ export function createInboundServer(): http.Server {
       return;
     }
 
+    if (req.method === "GET" && (urlPath === "/chat" || urlPath === "/prat")) {
+      const state = await loadState();
+      const html = renderChatPage(conversationForApi(state));
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(html);
+      return;
+    }
+
+    if (req.method === "GET" && urlPath === "/api/conversation") {
+      json(res, 200, await getConversationJson());
+      return;
+    }
+
+    if (req.method === "POST" && urlPath === "/api/message") {
+      if (!authorizeLocalMessage(req)) {
+        json(res, 403, { ok: false, error: "Forbidden" });
+        return;
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const raw = Buffer.concat(chunks).toString("utf8");
+      let text = "";
+      try {
+        const body = JSON.parse(raw) as { text?: string };
+        text = String(body.text ?? "");
+      } catch {
+        json(res, 400, { ok: false, error: "Invalid JSON" });
+        return;
+      }
+      const result = await postWilliamMessage(text);
+      json(res, result.ok ? 200 : 400, result);
+      return;
+    }
+
     if (req.method !== "POST" || urlPath !== PATH) {
       res.writeHead(404);
       res.end("Not found");
@@ -128,6 +166,7 @@ export function startInboundServer(): http.Server {
   server.listen(PORT, () => {
     console.log(`[olle-inbound] listening on http://127.0.0.1:${PORT}`);
     console.log(`[olle-inbound] dashboard: http://127.0.0.1:${PORT}/dashboard`);
+    console.log(`[olle-inbound] chat: http://127.0.0.1:${PORT}/chat`);
     console.log(`[olle-inbound] webhook POST ${PATH}`);
     console.log(`[olle-inbound] health: http://127.0.0.1:${PORT}/health`);
   });

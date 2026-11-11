@@ -9,6 +9,10 @@ import {
   recordEmailSend,
 } from "../email/rate-limits.js";
 import {
+  appendOlleReply,
+  markWilliamMessagesRead,
+} from "../conversation/messages.js";
+import {
   appendAudit,
   appendPinoFeed,
   createPermissionRequest,
@@ -26,7 +30,12 @@ export interface WorldActResult {
   rejectReason?: string;
   permissionId?: string;
   /** Prose-dependent effects run after speak */
-  pendingSpeakKind?: "private_diary" | "notify_william" | "permission_note";
+  pendingSpeakKind?:
+    | "private_diary"
+    | "notify_william"
+    | "email_william"
+    | "reply_to_william"
+    | "permission_note";
 }
 
 /** World/runtime: validate typed action before mutations (Pino FX). */
@@ -44,13 +53,20 @@ export function validateAct(state: OlleWorldState, decision: DecideOutput): Worl
     return { ok: false, rejectReason: "Asleep — only sleep action allowed" };
   }
 
-  if (decision.action_id === "notify_william") {
+  if (decision.action_id === "notify_william" || decision.action_id === "email_william") {
     if (getEmailBudgetRemaining(state) <= 0) {
       return { ok: false, rejectReason: "Email budget exhausted" };
     }
     const policy = canSendProactiveEmail(state);
     if (!policy.allowed) {
       return { ok: false, rejectReason: `Email blocked: ${policy.reason}` };
+    }
+  }
+
+  if (decision.action_id === "reply_to_william") {
+    const unread = (state.conversation ?? []).some((m) => m.from === "william" && !m.read_by_olle);
+    if (!unread) {
+      return { ok: false, rejectReason: "No unread message from William" };
     }
   }
 
@@ -111,6 +127,12 @@ export async function applyAct(
     case "notify_william":
       state.lastActivity = "notifying";
       return { ok: true, pendingSpeakKind: "notify_william" };
+    case "reply_to_william":
+      state.lastActivity = "replying";
+      return { ok: true, pendingSpeakKind: "reply_to_william" };
+    case "email_william":
+      state.lastActivity = "emailing";
+      return { ok: true, pendingSpeakKind: "email_william" };
     case "draft_email":
       state.outbox.push({
         subject: String(params.subject ?? ""),
@@ -223,6 +245,51 @@ export async function finalizeAct(
         about: "shared_diary",
       });
       break;
+    case "reply_to_william": {
+      const replyText = spoke.trim() || decision.because;
+      const inReplyTo = String(decision.params.in_reply_to ?? "");
+      const lastUnread = (state.conversation ?? [])
+        .filter((m) => m.from === "william" && !m.read_by_olle)
+        .at(-1);
+      appendOlleReply(state, replyText, inReplyTo || lastUnread?.id);
+      markWilliamMessagesRead(state);
+      appendPinoFeed(state, "did", replyText, {
+        why: decision.because,
+        ok: true,
+        action_id: decision.action_id,
+        about: "conversation",
+        change: "reply",
+      });
+      break;
+    }
+    case "email_william": {
+      const subject = String(decision.params.subject ?? "[Olle]");
+      const body = spoke.trim() || String(decision.params.body ?? "");
+      state.outbox.push({ subject, body, at: new Date().toISOString() });
+      const policy = canSendProactiveEmail(state);
+      if (!policy.allowed) {
+        appendAudit(state, "email_suppressed", { kind: "proactive", reason: policy.reason, subject });
+        appendPinoFeed(state, "noticed", `Email to William suppressed: ${policy.reason}`, {
+          ok: false,
+          about: "william",
+        });
+        break;
+      }
+      await email.send({
+        to: process.env.WILLIAM_EMAIL ?? "william@example.com",
+        subject,
+        body,
+      });
+      recordEmailSend(state, "proactive");
+      appendPinoFeed(state, "did", subject, {
+        why: decision.because,
+        ok: true,
+        action_id: decision.action_id,
+        about: "william",
+        change: "email_sent",
+      });
+      break;
+    }
   }
 }
 

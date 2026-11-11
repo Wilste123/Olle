@@ -2,6 +2,7 @@
 import { loadOlleEnv } from "./env.js";
 loadOlleEnv();
 
+import { appendWilliamMessage } from "./conversation/messages.js";
 import { executeGrantedPermission } from "./act/executor.js";
 import { loadState, resolvePermission, saveState } from "./world/store.js";
 import { runMindTick } from "./mind-tick.js";
@@ -40,6 +41,19 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (cmd === "say") {
+    const text = process.argv.slice(3).join(" ").trim() || (sub ?? "").trim();
+    if (!text) {
+      console.error("Usage: olle say <message>");
+      process.exit(1);
+    }
+    const state = await loadState();
+    const msg = appendWilliamMessage(state, text, "cli");
+    await saveState(state);
+    console.log(`Queued for Olle: ${msg.id}`);
+    return;
+  }
+
   if (cmd === "status") {
     const state = await loadState();
     console.log(
@@ -51,6 +65,10 @@ async function main(): Promise<void> {
           pendingPermissions: state.permissions.filter((p) => p.status === "pending"),
           sharedDiaryQueue: state.sharedDiaryQueue,
           feedTail: state.feed.slice(-8),
+          conversationTail: (state.conversation ?? []).slice(-6),
+          unreadFromWilliam: (state.conversation ?? []).filter(
+            (m) => m.from === "william" && !m.read_by_olle,
+          ).length,
         },
         null,
         2,
@@ -59,10 +77,11 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.log(`Olle mind CLI (Phase 0)
+  console.log(`Olle mind CLI (Phase 1)
 
 Usage:
   olle tick
+  olle say <message>
   olle permit approve <request-id>
   olle permit deny <request-id>
   olle status

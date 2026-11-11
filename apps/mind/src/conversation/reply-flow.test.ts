@@ -1,0 +1,69 @@
+import { describe, expect, it } from "vitest";
+import { MockEmailAdapter } from "../email/adapter.js";
+import { heuristicDecide } from "../decide/heuristic.js";
+import type { SenseSnapshot } from "@olle/protocol";
+import { appendWilliamMessage } from "./messages.js";
+import { applyAct, finalizeAct, validateAct } from "../world/runtime.js";
+import type { OlleWorldState } from "../world/store.js";
+
+function emptyState(): OlleWorldState {
+  return {
+    version: 1,
+    placement: { status: "unplaced" },
+    olleDay: 0,
+    feelings: {
+      mood: 0,
+      energy: 0.8,
+      needs: { rest: 0.2, curiosity: 0.3, social: 0.3, expression: 0.3, quiet: 0.2 },
+      asleep: false,
+    },
+    privateDiary: [],
+    sharedDiaryQueue: [],
+    feed: [],
+    permissions: [],
+    outbox: [],
+    audit: [],
+    inboundQueue: [],
+    memories: [],
+    emailSends: [],
+    conversation: [],
+    lastActivity: "idle",
+    tickCount: 0,
+  };
+}
+
+function senseFor(state: OlleWorldState): SenseSnapshot {
+  return {
+    at: new Date().toISOString(),
+    olleDay: 0,
+    placement: state.placement,
+    feelings: state.feelings,
+    threads: ["William"],
+    emailBudgetRemaining: 2,
+    openPermissionCount: 0,
+    recentFeedTail: [],
+    inboundSinceLastTick: 1,
+    unreadFromWilliam: 1,
+    williamMessagePreview: "hei",
+  };
+}
+
+describe("reply_to_william flow", () => {
+  it("heuristic picks reply and finalize appends olle message", async () => {
+    const state = emptyState();
+    appendWilliamMessage(state, "hei olle", "cli");
+    const decision = heuristicDecide(senseFor(state));
+    expect(decision.action_id).toBe("reply_to_william");
+
+    const validation = validateAct(state, decision);
+    expect(validation.ok).toBe(true);
+    const email = new MockEmailAdapter();
+    const act = await applyAct(state, decision, validation, email);
+    expect(act.pendingSpeakKind).toBe("reply_to_william");
+
+    await finalizeAct(state, decision, act, "Hei William — godt å høre fra deg.", email);
+    const olleMsg = state.conversation?.find((m) => m.from === "olle");
+    expect(olleMsg?.text).toContain("Hei William");
+    expect(state.conversation?.every((m) => m.from !== "william" || m.read_by_olle)).toBe(true);
+  });
+});

@@ -76,7 +76,7 @@ export function renderDashboard(
     <span class="pill">email budget ${now.emailBudgetRemaining}</span>
     <span class="pill">ticks ${now.tickCount}</span>
   </p>
-  <p>Activity: ${esc(now.lastActivity)} · <a href="/api/now">/api/now</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
+  <p>Activity: ${esc(now.lastActivity)} · <a href="/chat">Prat</a> · <a href="/api/now">/api/now</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
 
   <section>
     <h2>Pending permissions</h2>
