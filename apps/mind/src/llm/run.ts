@@ -14,6 +14,7 @@ export function buildDecideContext(
     openPermissions: sense.openPermissionCount,
     emailBudget: sense.emailBudgetRemaining,
     placementUnplaced: sense.placement.status === "unplaced",
+    webFetchesRemaining: sense.webFetchesRemaining,
   });
   return { sense, legalActionIds, memorySnippets };
 }
@@ -58,6 +59,15 @@ export async function runDecide(
       fellBack: true,
     };
   }
+}
+
+/** Force speak LLM for real conversation replies (OpenAI / Anthropic). */
+export function shouldUseLlmSpeak(provider: LlmProvider, lockedActionId: string): boolean {
+  if (provider.name === "heuristic") return false;
+  if (lockedActionId === "reply_to_william" || lockedActionId === "research_topic") {
+    return provider.name === "openai" || provider.name === "anthropic";
+  }
+  return true;
 }
 
 export async function runSpeak(

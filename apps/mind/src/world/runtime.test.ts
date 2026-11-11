@@ -22,6 +22,10 @@ const base = (): OlleWorldState =>
       audit: [],
       lastActivity: "idle",
       tickCount: 0,
+      hobbies: [],
+      survival: { hunger: 0.3 },
+      purse: { coins: 3, lifetime_earned: 3 },
+      inventory: [],
     }),
   ) as OlleWorldState;
 

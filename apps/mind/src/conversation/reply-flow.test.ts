@@ -29,6 +29,10 @@ function emptyState(): OlleWorldState {
     conversation: [],
     lastActivity: "idle",
     tickCount: 0,
+    hobbies: [],
+    survival: { hunger: 0.35 },
+    purse: { coins: 3, lifetime_earned: 3 },
+    inventory: [],
   };
 }
 
@@ -39,12 +43,19 @@ function senseFor(state: OlleWorldState): SenseSnapshot {
     placement: state.placement,
     feelings: state.feelings,
     threads: ["William"],
+    hobbies: [],
+    ticksSinceLastPrivateDiary: 99,
     emailBudgetRemaining: 2,
     openPermissionCount: 0,
     recentFeedTail: [],
     inboundSinceLastTick: 1,
     unreadFromWilliam: 1,
     williamMessagePreview: "hei",
+    survival: state.survival,
+    purse: state.purse,
+    inventory: state.inventory,
+    inventorySummary: "(empty)",
+    webFetchesRemaining: 12,
   };
 }
 

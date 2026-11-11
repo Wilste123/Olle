@@ -4,6 +4,7 @@ loadOlleEnv();
 
 import { appendWilliamMessage } from "./conversation/messages.js";
 import { executeGrantedPermission } from "./act/executor.js";
+import { grantCoins, grantItem } from "./survival/inventory.js";
 import { loadState, resolvePermission, saveState } from "./world/store.js";
 import { runMindTick } from "./mind-tick.js";
 
@@ -54,6 +55,27 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (cmd === "grant" && sub === "item" && arg) {
+    const state = await loadState();
+    const item = grantItem(state, arg, { kind: "food", source: "william_grant" });
+    await saveState(state);
+    console.log(`Granted ${item.label} (${item.id}) qty ${item.qty}`);
+    return;
+  }
+
+  if (cmd === "grant" && sub === "coins" && arg) {
+    const n = Number(arg);
+    if (!Number.isFinite(n) || n < 0) {
+      console.error("Usage: olle grant coins <n>");
+      process.exit(1);
+    }
+    const state = await loadState();
+    const total = grantCoins(state, n);
+    await saveState(state);
+    console.log(`Coins now: ${total}`);
+    return;
+  }
+
   if (cmd === "status") {
     const state = await loadState();
     console.log(
@@ -84,6 +106,8 @@ Usage:
   olle say <message>
   olle permit approve <request-id>
   olle permit deny <request-id>
+  olle grant item <label>
+  olle grant coins <n>
   olle status
 
 Live Olle: npm start (from repo root)

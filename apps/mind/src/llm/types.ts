@@ -13,6 +13,12 @@ export interface SpeakContext {
   memorySnippets: string[];
   worldOk: boolean;
   worldRejectReason?: string;
+  /** Full latest William message when replying (speak step). */
+  williamMessageText?: string;
+  placement?: SenseSnapshot["placement"];
+  /** Trimmed page text for research_topic speak — summarize only. */
+  researchExcerpt?: string;
+  researchUrl?: string;
 }
 
 export interface LlmUsage {

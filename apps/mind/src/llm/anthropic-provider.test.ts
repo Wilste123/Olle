@@ -1,25 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AnthropicProvider, type AnthropicClient } from "./anthropic-provider.js";
 import type { DecideContext } from "./types.js";
-import type { SenseSnapshot } from "@olle/protocol";
-
-const baseSense: SenseSnapshot = {
-  at: new Date().toISOString(),
-  olleDay: 1,
-  placement: { status: "unplaced" },
-  feelings: {
-    mood: 0.2,
-    energy: 0.8,
-    needs: { rest: 0.2, curiosity: 0.5, social: 0.4, expression: 0.3, quiet: 0.2 },
-    asleep: false,
-  },
-  threads: ["William"],
-  emailBudgetRemaining: 2,
-  openPermissionCount: 0,
-  recentFeedTail: [],
-  inboundSinceLastTick: 0,
-  unreadFromWilliam: 0,
-};
+import { baseSense } from "../test/sense-fixture.js";
 
 function mockClient(toolInput: Record<string, unknown>, speakText?: string): AnthropicClient {
   return {
@@ -61,7 +43,7 @@ function mockClient(toolInput: Record<string, unknown>, speakText?: string): Ant
 
 describe("AnthropicProvider", () => {
   const ctx: DecideContext = {
-    sense: baseSense,
+    sense: baseSense(),
     legalActionIds: ["think_about", "continue_activity"],
     memorySnippets: ["remembered rain"],
   };
@@ -89,7 +71,7 @@ describe("AnthropicProvider", () => {
         params: { line: "test" },
         because: "expression",
       },
-      feelings: baseSense.feelings,
+      feelings: baseSense().feelings,
       memorySnippets: [],
       worldOk: true,
     });

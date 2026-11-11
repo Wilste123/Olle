@@ -1,4 +1,7 @@
+import type { HobbyThread } from "@olle/protocol";
 import type { OlleWorldState } from "../world/store.js";
+import { inventorySummary } from "../survival/inventory.js";
+import { loudestHobbies } from "../hobbies/engine.js";
 import { getEmailBudgetRemaining } from "../email/rate-limits.js";
 import { countUnreadFromWilliam } from "../conversation/messages.js";
 import { countUnprocessedInbound } from "../inbound/offering.js";
@@ -17,6 +20,11 @@ export interface NowSnapshot {
   outboxTail: OlleWorldState["outbox"];
   unreadFromWilliam: number;
   conversationTail: OlleWorldState["conversation"];
+  doing: string;
+  hobbies: HobbyThread[];
+  survival: OlleWorldState["survival"];
+  purse: OlleWorldState["purse"];
+  inventorySummary: string;
 }
 
 export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
@@ -34,6 +42,11 @@ export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
     outboxTail: state.outbox.slice(-5),
     unreadFromWilliam: countUnreadFromWilliam(state),
     conversationTail: (state.conversation ?? []).slice(-8),
+    doing: state.lastActivity,
+    hobbies: loudestHobbies(state, 8),
+    survival: state.survival,
+    purse: state.purse,
+    inventorySummary: inventorySummary(state),
   };
 }
 

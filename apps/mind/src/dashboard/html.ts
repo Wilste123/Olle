@@ -47,6 +47,11 @@ export function renderDashboard(
 
   const memItems = now.memories.map((m) => `<li>${esc(m.text)} <small>(${m.strength.toFixed(2)})</small></li>`).join("");
 
+  const hunger = now.survival.hunger.toFixed(2);
+  const hobbyItems = now.hobbies
+    .map((h) => `<li>${esc(h.label)} <small>heat ${h.heat.toFixed(2)}</small></li>`)
+    .join("");
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -75,8 +80,16 @@ export function renderDashboard(
     <span class="pill">energy ${energy}</span>
     <span class="pill">email budget ${now.emailBudgetRemaining}</span>
     <span class="pill">ticks ${now.tickCount}</span>
+    <span class="pill">hunger ${hunger}</span>
+    <span class="pill">coins ${now.purse.coins}</span>
   </p>
-  <p>Activity: ${esc(now.lastActivity)} · <a href="/chat">Prat</a> · <a href="/api/now">/api/now</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
+  <p>Doing: ${esc(now.doing)} · <a href="/chat">Prat</a> · <a href="/api/now">/api/now</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
+  <p>Inventory: ${esc(now.inventorySummary)}</p>
+
+  <section>
+    <h2>Hobbies / threads</h2>
+    <ul>${hobbyItems || "<li>(warming up)</li>"}</ul>
+  </section>
 
   <section>
     <h2>Pending permissions</h2>

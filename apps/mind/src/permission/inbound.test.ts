@@ -6,9 +6,9 @@ import {
   createPermissionRequest,
   loadState,
   saveState,
-  type OlleWorldState,
 } from "../world/store.js";
 import { processPermissionReply } from "./inbound.js";
+import { emptyWorldState } from "../test/world-fixture.js";
 
 let stateDir = "";
 
@@ -18,30 +18,8 @@ afterEach(async () => {
   delete process.env.WILLIAM_EMAIL;
 });
 
-function baseState(): OlleWorldState {
-  return {
-    version: 1,
-    placement: { status: "unplaced" },
-    olleDay: 0,
-    feelings: {
-      mood: 0,
-      energy: 0.8,
-      needs: { rest: 0.2, curiosity: 0.5, social: 0.4, expression: 0.3, quiet: 0.2 },
-      asleep: false,
-    },
-    privateDiary: [],
-    sharedDiaryQueue: [],
-    feed: [],
-    permissions: [],
-    outbox: [],
-    audit: [],
-    inboundQueue: [],
-    memories: [],
-    emailSends: [],
-    conversation: [],
-    lastActivity: "idle",
-    tickCount: 0,
-  };
+function baseState() {
+  return emptyWorldState();
 }
 
 describe("processPermissionReply", () => {

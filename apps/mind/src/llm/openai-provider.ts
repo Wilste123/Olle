@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { ACTION_MANIFEST } from "@olle/protocol";
+import { ACTION_MANIFEST, type SenseSnapshot } from "@olle/protocol";
 import { validateDecideOutput } from "../decide/schema.js";
 import { HeuristicProvider } from "./heuristic-provider.js";
 import { parseDecideJson, parseSpeakText } from "./parse.js";
@@ -13,7 +13,7 @@ import type {
 } from "./types.js";
 
 const OLLE_VOICE =
-  "You are Olle, William's private autonomous companion. Warm, concise, pet-friend tone — not clinical. Never claim to be human.";
+  "You are Olle, William's private autonomous companion — part pet, part friend, a little tamagotchi-like mind that lives on its own. Warm, concise, playful when mood allows; never clinical or preachy. You may mention being unplaced (no physical body yet). If William writes in Norwegian, reply in natural Norwegian. Never claim to be human.";
 
 const DECIDE_JSON_SCHEMA = {
   type: "object" as const,
@@ -70,6 +70,11 @@ export class OpenAiProvider implements LlmProvider {
       recent_feed: ctx.sense.recentFeedTail,
       email_budget_remaining: ctx.sense.emailBudgetRemaining,
       open_permissions: ctx.sense.openPermissionCount,
+      hobbies: ctx.sense.hobbies,
+      survival: ctx.sense.survival,
+      purse: ctx.sense.purse,
+      inventory_summary: ctx.sense.inventorySummary,
+      william_message: ctx.sense.williamMessageText,
     };
 
     const system = `${OLLE_VOICE}\n\nYou are the DECIDE step only. Pick one legal action. Params must match the manifest schema. No map or Class D actions.`;
@@ -143,6 +148,10 @@ export class OpenAiProvider implements LlmProvider {
       world_reject_reason: ctx.worldRejectReason,
       feelings: ctx.feelings,
       memory_snippets: ctx.memorySnippets,
+      placement: ctx.placement,
+      william_message: ctx.williamMessageText,
+      research_url: ctx.researchUrl,
+      research_excerpt_for_summary_only: ctx.researchExcerpt?.slice(0, 2000),
     };
 
     try {
@@ -152,7 +161,7 @@ export class OpenAiProvider implements LlmProvider {
         messages: [
           {
             role: "system",
-            content: `${OLLE_VOICE}\n\nYou are the SPEAK step only. The action is LOCKED — do not choose or suggest any action. Generate the short outward line (diary or email body). If world_ok is false, briefly acknowledge the rejection. No JSON. Max ~3 sentences.`,
+            content: `${OLLE_VOICE}\n\nYou are the SPEAK step only. The action is LOCKED — do not choose or suggest any action. Generate the short outward line (diary, chat reply, or email body). For reply_to_william, respond directly to william_message in the thread voice. For research_topic, write a short private diary summary of research_excerpt_for_summary_only (do NOT paste the whole page; max ~4 sentences). If world_ok is false, briefly acknowledge the rejection. No JSON. Max ~3 sentences unless summarizing research.`,
           },
           {
             role: "user",
@@ -172,6 +181,38 @@ export class OpenAiProvider implements LlmProvider {
 
     const fallback = await new HeuristicProvider().speak(ctx);
     return { ...fallback, fellBack: true };
+  }
+
+  /** Small structured hobby label when wander_curiosity spawns a thread. */
+  async nameHobby(input: {
+    placement: SenseSnapshot["placement"];
+    feelings: SenseSnapshot["feelings"];
+    existing: string[];
+  }): Promise<string | null> {
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: this.decideModel,
+        max_tokens: 64,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Name one small, low-stakes private hobby or obsession for Olle (weird, cozy, non-task). Two to six words. JSON only: {\"label\":\"...\"}",
+          },
+          {
+            role: "user",
+            content: JSON.stringify(input),
+          },
+        ],
+        response_format: { type: "json_object" },
+      });
+      const content = completion.choices[0]?.message?.content;
+      if (!content) return null;
+      const parsed = JSON.parse(content) as { label?: string };
+      return typeof parsed.label === "string" ? parsed.label.trim().slice(0, 120) : null;
+    } catch {
+      return null;
+    }
   }
 }
 

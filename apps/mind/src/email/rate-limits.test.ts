@@ -1,37 +1,11 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import type { OlleWorldState } from "../world/store.js";
 import {
   canSendProactiveEmail,
   getEmailBudgetRemaining,
   PROACTIVE_SOFT_24H,
   recordEmailSend,
 } from "./rate-limits.js";
-
-function emptyState(): OlleWorldState {
-  return {
-    version: 1,
-    placement: { status: "unplaced" },
-    olleDay: 0,
-    feelings: {
-      mood: 0,
-      energy: 0.8,
-      needs: { rest: 0.2, curiosity: 0.3, social: 0.3, expression: 0.3, quiet: 0.2 },
-      asleep: false,
-    },
-    privateDiary: [],
-    sharedDiaryQueue: [],
-    feed: [],
-    permissions: [],
-    outbox: [],
-    audit: [],
-    inboundQueue: [],
-    memories: [],
-    emailSends: [],
-    conversation: [],
-    lastActivity: "idle",
-    tickCount: 0,
-  };
-}
+import { emptyWorldState } from "../test/world-fixture.js";
 
 describe("rate limits", () => {
   const prevQuiet = process.env.OLLE_QUIET_HOURS;
@@ -45,7 +19,7 @@ describe("rate limits", () => {
   });
 
   it("reduces email budget after proactive sends", () => {
-    const state = emptyState();
+    const state = emptyWorldState();
     expect(getEmailBudgetRemaining(state)).toBe(PROACTIVE_SOFT_24H);
     recordEmailSend(state, "proactive");
     recordEmailSend(state, "proactive");
@@ -53,7 +27,7 @@ describe("rate limits", () => {
   });
 
   it("blocks proactive at soft cap", () => {
-    const state = emptyState();
+    const state = emptyWorldState();
     const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString();
     state.emailSends = [
       { at: fiveHoursAgo, kind: "proactive" },

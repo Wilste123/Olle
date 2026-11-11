@@ -15,7 +15,20 @@ export function isSalientForDecide(
   if (Math.abs(sense.feelings.mood) > 0.55) return true;
 
   const n = sense.feelings.needs;
+  if (sense.survival.hunger > 0.7) return true;
+  if (sense.survival.hunger > 0.55 && sense.inventory.every((i) => i.kind !== "food" || i.qty < 1)) {
+    return true;
+  }
+
+  if (sense.webFetchesRemaining > 0 && n.curiosity > 0.68) return true;
   if (n.social > 0.68 || n.expression > 0.72 || n.curiosity > 0.78) return true;
+
+  const hotHobby = sense.hobbies.length
+    ? Math.max(...sense.hobbies.map((h) => h.heat))
+    : 0;
+  if (hotHobby > 0.62 && n.curiosity > 0.42) return true;
+
+  if (n.expression > 0.7 && n.curiosity > 0.45) return true;
   if (sense.openPermissionCount > 0 && n.curiosity > 0.45) return true;
   if (sense.emailBudgetRemaining > 0 && n.social > 0.6) return true;
 
@@ -24,7 +37,11 @@ export function isSalientForDecide(
   const continuing =
     lastActivity === "continuing" ||
     (lastDecisionActionId === "continue_activity" && lastActivity !== "idle");
-  if (continuing) return false;
+  if (continuing) {
+    if (n.expression > 0.78) return true;
+    if (hotHobby > 0.7) return true;
+    return false;
+  }
 
   return true;
 }

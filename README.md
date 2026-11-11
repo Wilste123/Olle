@@ -39,6 +39,22 @@ Feed entries follow Pino kinds: `did` / `noticed` / `felt` / `mind` with `why`, 
 
 **Placement:** Olle defaults to `{ status: "unplaced" }`. Mind ticks run fully while unplaced (private diary, rest, email stubs). Class C in Phase 0 is **shared diary proposals only** — no map pins or physical-world UI.
 
+## Autonomy experiment (hobbies)
+
+Olle keeps **hobby threads** in state (`hobbies[]` with heat that decays each tick). Class A actions `nurse_hobby`, `wander_curiosity`, and `play_solo` diversify idle life; `append_private_diary` is rate-limited by tick gap so Olle does not spam the same line. `/api/now` and the dashboard show active threads and **doing** (`lastActivity`). With OpenAI/Anthropic, `reply_to_william` always uses the speak LLM with your full message in context.
+
+## Nettforskning
+
+Class A **`research_topic`** (`url` and/or `query`): **HTTPS GET only**, 500KB cap, no localhost/private IPs, user-agent `OlleMind/0.3`. Max **12 fetches/day** in state.
+
+**MVP (GPT only):** paste an `https://…` link in **`/chat`** or `olle say "… https://…"` — Olle extracts the URL from your last unread message, fetches, and **OpenAI summarizes** into private diary + hobby note. No search API required.
+
+Optional: **`BRAVE_SEARCH_API_KEY`** or **`TAVILY_API_KEY`** lets `query` resolve to a URL when you did not paste a link.
+
+## Survival experiment (v0)
+
+State **version 2** adds `survival.hunger`, `purse.coins`, and `inventory[]` (no map economy yet). Each tick raises hunger deterministically; Olle can **`eat`**, **`forage`** (seeded loot), **`buy_from_supply`** (static catalog in the protocol manifest), **`craft_expression`**, or **`ask_william_for`** (Class B chat/email). William can gift via CLI: `npm run olle -- grant item <label>` and `grant coins <n>`. Dashboard `/now` shows hunger, coins, and inventory summary.
+
 **World state:** JSON file (default `.olle-state.json` in cwd) — private diary, feed, permission queue, shared diary entries (pending until approved).
 
 **Class D** actions (e.g. `add_map_pin`) exist in the manifest but are **blocked in code**.
@@ -126,8 +142,8 @@ Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured
 
 ## Actions (Phase 0)
 
-- **Class A:** `continue_activity`, `feel_and_note`, `rest`, `think_about`, `remember`, `read_world`, `draft_email`, `sleep`
-- **Class B:** `append_private_diary`, `notify_william`
+- **Class A:** `continue_activity`, `feel_and_note`, `rest`, `think_about`, `remember`, `read_world`, `draft_email`, `sleep`, `nurse_hobby`, `wander_curiosity`, `play_solo`, `eat`, `forage`, `buy_from_supply`, `craft_expression`
+- **Class B:** `append_private_diary`, `notify_william`, `ask_william_for`, `reply_to_william`, `email_william`
 - **Class C:** `propose_shared_diary_entry` (permission-gated)
 - **Class D:** `add_map_pin` — blocked
 

@@ -76,6 +76,11 @@ export function latestUnreadWilliamPreview(state: OlleWorldState): string | unde
   return last?.text.slice(0, 200);
 }
 
+export function latestUnreadWilliamText(state: OlleWorldState): string | undefined {
+  const unread = (state.conversation ?? []).filter((m) => m.from === "william" && !m.read_by_olle);
+  return unread[unread.length - 1]?.text;
+}
+
 export function markWilliamMessagesRead(state: OlleWorldState): void {
   for (const m of state.conversation ?? []) {
     if (m.from === "william" && !m.read_by_olle) m.read_by_olle = true;
