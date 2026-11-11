@@ -1,6 +1,6 @@
 # Olle
 
-Private autonomous companion — Phase 0: runnable mind loop, permission gate, optional email (mock without API keys).
+Private autonomous companion — **Phase 1 MVP**: mind loop, read-only dashboard, inbound offerings, email rate limits + quiet hours, permission gate, optional Resend (mock without API keys).
 
 ## Architecture (Pino-shaped)
 
@@ -47,7 +47,7 @@ Feed entries follow Pino kinds: `did` / `noticed` / `felt` / `mind` with `why`, 
 
 1. `cp .env.example .env` — secrets only in `.env` (never committed).
 2. `npm install && npm run build && npm test` — all green.
-3. `npm start` — continuous mind loop **and** inbound webhook (`:8787/webhooks/email/inbound`).
+3. `npm start` — mind loop, inbound webhook, and dashboard at `http://127.0.0.1:8787/dashboard`.
 4. Without API keys — heuristic mind still ticks; with `OPENAI_API_KEY` (default) or `ANTHROPIC_API_KEY` — LLM decide/speak.
 5. Permission E2E — Class C → email mock or Resend → `olle permit approve <id>` **or** inbound `YES <id>` → shared diary `published`.
 
@@ -120,6 +120,7 @@ See **`.env.example`** for every variable. Highlights:
 | `OLLE_INBOUND_PORT` | Default `8787` |
 | `RESEND_API_KEY` + `OLLE_EMAIL_FROM` | Real outbound (both required with `WILLIAM_EMAIL`) |
 | `OLLE_STATE_PATH` / `OLLE_TICK_MS` | State file and tick interval |
+| `OLLE_QUIET_HOURS` / `OLLE_QUIET_TZ` | Proactive email quiet window (default Oslo) |
 
 Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured.
 
@@ -134,7 +135,9 @@ Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured
 
 **Outbound:** set `RESEND_API_KEY`, `OLLE_EMAIL_FROM`, and `WILLIAM_EMAIL`.
 
-**Inbound:** `npm start` exposes `POST /webhooks/email/inbound`. Route Resend inbound (or ngrok) to that path; body may be Resend JSON or `{ "from", "text" }`.
+**Inbound:** `npm start` exposes `POST /webhooks/email/inbound`. Route Resend inbound (or ngrok) to that path; body may be Resend JSON or `{ "from", "text" }`. Non-permission mail becomes **offerings** (queued for Sense).
+
+**Dashboard (Phase 1):** `GET /`, `/dashboard`, `/api/now`, `/api/feed`, `/api/audit` on the same port as inbound.
 
 ## Repo layout
 

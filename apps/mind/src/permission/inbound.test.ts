@@ -35,6 +35,9 @@ function baseState(): OlleWorldState {
     permissions: [],
     outbox: [],
     audit: [],
+    inboundQueue: [],
+    memories: [],
+    emailSends: [],
     lastActivity: "idle",
     tickCount: 0,
   };

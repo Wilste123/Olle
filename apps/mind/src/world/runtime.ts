@@ -3,6 +3,13 @@ import { validateDecideOutput } from "../decide/schema.js";
 import type { EmailAdapter } from "../email/adapter.js";
 import { enterSleep, tickFeelings, wake } from "../feelings/simulator.js";
 import {
+  canSendPermissionEmail,
+  canSendProactiveEmail,
+  getEmailBudgetRemaining,
+  recordEmailSend,
+} from "../email/rate-limits.js";
+import {
+  appendAudit,
   appendPinoFeed,
   createPermissionRequest,
   type OlleWorldState,
@@ -38,8 +45,13 @@ export function validateAct(state: OlleWorldState, decision: DecideOutput): Worl
   }
 
   if (decision.action_id === "notify_william") {
-    const budget = 2; // sense mirrors this; world enforces
-    if (budget <= 0) return { ok: false, rejectReason: "Email budget exhausted" };
+    if (getEmailBudgetRemaining(state) <= 0) {
+      return { ok: false, rejectReason: "Email budget exhausted" };
+    }
+    const policy = canSendProactiveEmail(state);
+    if (!policy.allowed) {
+      return { ok: false, rejectReason: `Email blocked: ${policy.reason}` };
+    }
   }
 
   if (decision.action_id === "propose_shared_diary_entry") {
@@ -118,7 +130,21 @@ export async function applyAct(
         created_at: new Date().toISOString(),
       };
       state.sharedDiaryQueue.push(pending);
-      await email.sendPermissionRequest(req);
+      const permPolicy = canSendPermissionEmail(state);
+      if (permPolicy.allowed) {
+        await email.sendPermissionRequest(req);
+        recordEmailSend(state, "permission");
+      } else {
+        appendAudit(state, "email_suppressed", {
+          request_id: req.id,
+          kind: "permission",
+          reason: permPolicy.reason,
+        });
+        appendPinoFeed(state, "noticed", `Permission email suppressed: ${permPolicy.reason}`, {
+          ok: false,
+          about: "permission",
+        });
+      }
       state.lastActivity = "awaiting_permission";
       return { ok: true, permissionId: req.id, pendingSpeakKind: "permission_note" };
     }
@@ -165,11 +191,21 @@ export async function finalizeAct(
       const subject = String(decision.params.subject ?? "[Olle]");
       const body = spoke.trim() || String(decision.params.body ?? "");
       state.outbox.push({ subject, body, at: new Date().toISOString() });
+      const policy = canSendProactiveEmail(state);
+      if (!policy.allowed) {
+        appendAudit(state, "email_suppressed", { kind: "proactive", reason: policy.reason, subject });
+        appendPinoFeed(state, "noticed", `Proactive email suppressed: ${policy.reason}`, {
+          ok: false,
+          about: "william",
+        });
+        break;
+      }
       await email.send({
         to: process.env.WILLIAM_EMAIL ?? "william@example.com",
         subject,
         body,
       });
+      recordEmailSend(state, "proactive");
       appendPinoFeed(state, "did", subject, {
         why: decision.because,
         ok: true,

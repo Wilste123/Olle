@@ -1,0 +1,113 @@
+import type { NowSnapshot } from "../api/snapshot.js";
+import type { FeedEntry } from "../world/store.js";
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function renderDashboard(
+  now: NowSnapshot,
+  feed: FeedEntry[],
+  audit: { at: string; kind: string; detail: Record<string, unknown> }[],
+): string {
+  const mood = now.feelings.mood.toFixed(2);
+  const energy = now.feelings.energy.toFixed(2);
+  const asleep = now.feelings.asleep ? "asleep" : "awake";
+
+  const permRows = now.pendingPermissions
+    .map(
+      (p) =>
+        `<tr><td>${esc(p.id)}</td><td>${esc(p.action_id)}</td><td>${esc(p.status)}</td><td>${esc(p.expires_at)}</td></tr>`,
+    )
+    .join("");
+
+  const diaryRows = now.sharedDiaryQueue
+    .map(
+      (d) =>
+        `<tr><td>${esc(d.title)}</td><td>${esc(d.status)}</td><td>${esc(d.body.slice(0, 120))}</td></tr>`,
+    )
+    .join("");
+
+  const feedItems = feed
+    .map(
+      (f) =>
+        `<li><time>${esc(f.at)}</time> <strong>${esc(f.kind)}</strong> ${esc(f.text)}${
+          f.why ? ` <em>(${esc(f.why)})</em>` : ""
+        }</li>`,
+    )
+    .join("");
+
+  const auditItems = audit
+    .map((a) => `<li><time>${esc(a.at)}</time> ${esc(a.kind)} — ${esc(JSON.stringify(a.detail))}</li>`)
+    .join("");
+
+  const memItems = now.memories.map((m) => `<li>${esc(m.text)} <small>(${m.strength.toFixed(2)})</small></li>`).join("");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Olle — dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 52rem; margin: 1.5rem auto; padding: 0 1rem; line-height: 1.45; }
+    h1 { font-size: 1.5rem; }
+    section { margin: 1.5rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { border-bottom: 1px solid #ddd; text-align: left; padding: 0.35rem 0.5rem; }
+    ul { padding-left: 1.2rem; }
+    li { margin: 0.25rem 0; }
+    time { color: #666; font-size: 0.85rem; }
+    .pill { display: inline-block; background: #eef; padding: 0.2rem 0.5rem; border-radius: 4px; margin-right: 0.35rem; }
+    a { color: #0366d6; }
+  </style>
+</head>
+<body>
+  <h1>Olle</h1>
+  <p>
+    <span class="pill">${esc(now.placement.status)}</span>
+    <span class="pill">${esc(asleep)}</span>
+    <span class="pill">mood ${mood}</span>
+    <span class="pill">energy ${energy}</span>
+    <span class="pill">email budget ${now.emailBudgetRemaining}</span>
+    <span class="pill">ticks ${now.tickCount}</span>
+  </p>
+  <p>Activity: ${esc(now.lastActivity)} · <a href="/api/now">/api/now</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
+
+  <section>
+    <h2>Pending permissions</h2>
+    <table>
+      <thead><tr><th>Id</th><th>Action</th><th>Status</th><th>Expires</th></tr></thead>
+      <tbody>${permRows || "<tr><td colspan=4>(none)</td></tr>"}</tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Shared diary</h2>
+    <table>
+      <thead><tr><th>Title</th><th>Status</th><th>Preview</th></tr></thead>
+      <tbody>${diaryRows || "<tr><td colspan=3>(empty)</td></tr>"}</tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Memories (from email)</h2>
+    <ul>${memItems || "<li>(none yet)</li>"}</ul>
+  </section>
+
+  <section>
+    <h2>Feed</h2>
+    <ul>${feedItems || "<li>(empty)</li>"}</ul>
+  </section>
+
+  <section>
+    <h2>Audit</h2>
+    <ul>${auditItems || "<li>(empty)</li>"}</ul>
+  </section>
+</body>
+</html>`;
+}
