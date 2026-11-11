@@ -1,0 +1,18 @@
+{
+  "name": "olle",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @olle/protocol && npm run build -w @olle/mind",
+    "typecheck": "npm run typecheck -w @olle/protocol && npm run typecheck -w @olle/mind",
+    "test": "npm run test -w @olle/mind",
+    "tick": "npm run tick -w @olle/mind",
+    "olle": "npm run olle -w @olle/mind"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
