@@ -9,6 +9,7 @@ import { countUnprocessedWebOfferings, recentWebOfferings } from "../inbound/web
 import type { Exhibition } from "../world/exhibitions.js";
 import { findExhibition, getActiveExhibitions } from "../world/exhibitions.js";
 import { placementLabel } from "../world/places.js";
+import { resolveLlmProviderName } from "../llm/factory.js";
 
 export interface NowSnapshot {
   at: string;
@@ -36,6 +37,9 @@ export interface NowSnapshot {
   lastVisitedExhibition?: { id: string; title: string; at?: string };
   webOfferingsPending: number;
   webOfferingsRecent: { id: string; text: string; gift_label?: string; received_at: string }[];
+  llmProvider: "heuristic" | "openai" | "anthropic";
+  /** Shown on dashboard when running without API keys. */
+  llmProviderHint?: string;
 }
 
 export const PRIVATE_DIARY_TAIL_LIMIT = 50;
@@ -98,6 +102,11 @@ export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
       gift_label: o.gift_label,
       received_at: o.received_at,
     })),
+    llmProvider: resolveLlmProviderName(),
+    llmProviderHint:
+      resolveLlmProviderName() === "heuristic"
+        ? "Heuristic mode — set OPENAI_API_KEY (or OLLE_LLM_PROVIDER=openai) in .env and restart for richer speak."
+        : undefined,
   };
 }
 

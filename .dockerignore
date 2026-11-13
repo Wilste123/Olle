@@ -1,0 +1,12 @@
+node_modules
+.git
+.github
+.env
+.env.*
+!.env.example
+*.md
+docs
+.olle-state.json
+**/dist
+coverage
+.cursor

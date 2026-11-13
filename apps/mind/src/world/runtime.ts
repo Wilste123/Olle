@@ -17,6 +17,7 @@ import {
   ensureHobbies,
   hobbyLabelsForSense,
   pickRandomHobby,
+  PRIVATE_DIARY_MIN_TICK_GAP,
   recordPrivateDiaryTick,
   spawnHobby,
   ticksSinceLastPrivateDiary,
@@ -59,6 +60,7 @@ export interface WorldActResult {
   /** Prose-dependent effects run after speak */
   pendingSpeakKind?:
     | "private_diary"
+    | "activity_voice"
     | "notify_william"
     | "email_william"
     | "reply_to_william"
@@ -119,6 +121,15 @@ export function validateAct(state: OlleWorldState, decision: DecideOutput): Worl
   if (decision.action_id === "buy_from_supply") {
     const can = canBuyFromSupply(state, String(decision.params.supply_id ?? ""));
     if (!can.ok) return { ok: false, rejectReason: can.reason ?? "Cannot buy" };
+  }
+
+  if (decision.action_id === "append_private_diary") {
+    if (ticksSinceLastPrivateDiary(state) < PRIVATE_DIARY_MIN_TICK_GAP) {
+      return {
+        ok: false,
+        rejectReason: `Private diary cooled down — wait ${PRIVATE_DIARY_MIN_TICK_GAP} ticks between entries`,
+      };
+    }
   }
 
   if (decision.action_id === "research_topic") {
@@ -208,7 +219,7 @@ export async function applyAct(
       bumpHobby(state, hobby.id, 0.12);
       applyNeedDelta(state.feelings, { curiosity: -0.08, wonder: -0.05 });
       state.lastActivity = `nursing: ${hobby.label}`;
-      return { ok: true, pendingSpeakKind: "private_diary" };
+      return { ok: true, pendingSpeakKind: "activity_voice" };
     }
     case "visit_exhibition": {
       const ex = findExhibition(state, String(params.exhibition_id ?? ""));
@@ -263,7 +274,7 @@ export async function applyAct(
       bumpHobby(state, hobby.id, 0.1);
       applyNeedDelta(state.feelings, { curiosity: -0.1, wonder: -0.08 });
       state.lastActivity = `wandering: ${hobby.label}`;
-      return { ok: true, pendingSpeakKind: "private_diary" };
+      return { ok: true, pendingSpeakKind: "activity_voice" };
     }
     case "research_topic": {
       const research = await runResearchTopic(state, {
@@ -276,11 +287,15 @@ export async function applyAct(
       state.lastActivity = `research: ${research.bundle?.url ?? "web"}`;
       return { ok: true, pendingSpeakKind: "private_diary" };
     }
-    case "play_solo":
+    case "play_solo": {
+      ensureHobbies(state);
+      const playHobby = pickRandomHobby(state) ?? loudestOrRandom(state);
+      if (playHobby) bumpHobby(state, playHobby.id, 0.06);
       applyNeedDelta(state.feelings, { expression: -0.22, joy: 0.18, wonder: -0.05 });
       state.feelings.mood = Math.min(1, state.feelings.mood + 0.05);
       state.lastActivity = `playing solo${params.mood ? `: ${String(params.mood)}` : ""}`;
-      return { ok: true, pendingSpeakKind: "private_diary" };
+      return { ok: true, pendingSpeakKind: "activity_voice" };
+    }
     case "eat": {
       ensureSurvivalState(state);
       const itemId = String(params.item_id ?? foodInInventory(state)?.id ?? "");
@@ -420,6 +435,18 @@ export async function finalizeAct(
   if (!act.ok || !act.pendingSpeakKind) return;
 
   switch (act.pendingSpeakKind) {
+    case "activity_voice": {
+      const line = spoke.trim();
+      if (line) {
+        appendPinoFeed(state, "did", line, {
+          why: decision.because,
+          ok: true,
+          action_id: decision.action_id,
+          change: "activity",
+        });
+      }
+      break;
+    }
     case "private_diary": {
       const line =
         spoke.trim() || String(decision.params.line ?? decision.because);

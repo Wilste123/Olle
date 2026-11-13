@@ -202,8 +202,8 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
       action_id: "reply_to_william",
       params: {},
       because: sense.williamMessagePreview
-        ? `William wrote: ${sense.williamMessagePreview.slice(0, 80)}`
-        : "William sent a message.",
+        ? `Unread from William: ${sense.williamMessagePreview.slice(0, 80)}`
+        : "Unread message from William.",
     };
   }
 
@@ -344,7 +344,7 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
   }
 
   if (
-    sense.feelings.needs.expression > 0.72 &&
+    sense.feelings.needs.expression > 0.78 &&
     legal.includes("append_private_diary") &&
     diaryAllowed(sense)
   ) {
