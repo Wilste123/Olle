@@ -46,6 +46,7 @@ import {
   type OlleWorldState,
   type SharedDiaryEntry,
 } from "./store.js";
+import { applyGoToPlace, ensurePlacement, setPlacementAt, validateGoToPlace } from "./places.js";
 
 export interface WorldValidation {
   ok: boolean;
@@ -154,6 +155,12 @@ export function validateAct(state: OlleWorldState, decision: DecideOutput): Worl
     }
   }
 
+  if (decision.action_id === "go_to_place") {
+    ensurePlacement(state);
+    const move = validateGoToPlace(state, String(decision.params.place_id ?? ""));
+    if (!move.ok) return { ok: false, rejectReason: move.rejectReason };
+  }
+
   return { ok: true };
 }
 
@@ -229,13 +236,26 @@ export async function applyAct(
       state.lastVisitedExhibitionId = ex.id;
       state.lastVisitedExhibitionAt = new Date().toISOString();
       state.lastActivity = `visiting: ${ex.title}`;
+      ensurePlacement(state);
+      setPlacementAt(state, ex.place_id, { via: "visit_exhibition" });
       appendPinoFeed(state, "noticed", `At exhibition «${ex.title}»`, {
         ok: true,
         action_id,
         about: "exhibition",
-        meta: { exhibition_id: ex.id },
+        meta: { exhibition_id: ex.id, place_id: ex.place_id },
       });
       return { ok: true, pendingSpeakKind: "private_diary" };
+    }
+    case "go_to_place": {
+      ensurePlacement(state);
+      const placeId = String(params.place_id ?? "");
+      const moved = applyGoToPlace(state, placeId);
+      if (!moved.ok) {
+        return { ok: false, rejectReason: moved.rejectReason };
+      }
+      applyNeedDelta(state.feelings, { wonder: -0.04, curiosity: -0.03 });
+      state.lastActivity = `walking: ${placeId}`;
+      break;
     }
     case "wander_curiosity": {
       ensureHobbies(state);

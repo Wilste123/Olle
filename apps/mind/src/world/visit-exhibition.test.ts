@@ -24,6 +24,7 @@ describe("visit_exhibition", () => {
     expect(state.lastVisitedExhibitionId).toBe(ex.id);
     expect(state.lastActivity).toContain(ex.title);
     expect(state.hobbies.some((h) => h.label === ex.title)).toBe(true);
+    expect(state.placement).toMatchObject({ status: "placed", place_id: ex.place_id });
     await finalizeAct(state, decision, act, "Stille lyssetting.", createEmailAdapter());
     expect(state.privateDiary.at(-1)).toContain("Stille");
   });

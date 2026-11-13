@@ -1,4 +1,4 @@
-import type { DecideOutput, SenseSnapshot } from "@olle/protocol";
+import { getPlace, type DecideOutput, type SenseSnapshot } from "@olle/protocol";
 import { PRIVATE_DIARY_MIN_TICK_GAP } from "../hobbies/engine.js";
 import { extractHttpsUrl } from "../tools/research-url.js";
 import { maskLegalActionIds } from "./schema.js";
@@ -17,6 +17,58 @@ function pickExhibition(sense: SenseSnapshot): { id: string; title: string } | u
   const other = exs.filter((e) => e.id !== sense.lastVisitedExhibitionId);
   const pool = other.length ? other : exs;
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function pickMovementTarget(sense: SenseSnapshot): string | undefined {
+  const reach = sense.reachablePlaceIds ?? [];
+  if (!reach.length) return undefined;
+  const galleries = reach.filter((id) => id.startsWith("gallery_"));
+  const bench = reach.includes("quiet_bench") ? "quiet_bench" : undefined;
+  const h = hottestHobby(sense);
+  if (h && sense.feelings.needs.curiosity > sense.feelings.needs.wonder + 0.05 && galleries.length) {
+    const match = galleries.find((g) => h.label.toLowerCase().includes("kart") && g === "gallery_b");
+    return match ?? galleries[Math.floor(Math.random() * galleries.length)];
+  }
+  if (sense.feelings.needs.wonder > 0.58 && galleries.length) {
+    return galleries[Math.floor(Math.random() * galleries.length)];
+  }
+  if (sense.feelings.needs.curiosity > 0.52 && bench) return bench;
+  if (galleries.length && Math.random() < 0.5) return galleries[0];
+  return reach[Math.floor(Math.random() * reach.length)];
+}
+
+function wonderGoToPlaceBranch(
+  sense: SenseSnapshot,
+  legal: ReturnType<typeof maskLegalActionIds>,
+): DecideOutput | null {
+  if (sense.placement.status !== "placed") return null;
+  if (!legal.includes("go_to_place")) return null;
+  const wonder = sense.feelings.needs.wonder > 0.52;
+  const curious = sense.feelings.needs.curiosity > 0.48;
+  if (!wonder && !curious) return null;
+  const at = sense.placeId ?? "";
+  if (
+    wonder &&
+    legal.includes("visit_exhibition") &&
+    (sense.activeExhibitions?.length ?? 0) > 0 &&
+    sense.feelings.needs.wonder > 0.58
+  ) {
+    return null;
+  }
+  if (at === "gallery_a" || at === "gallery_b") return null;
+  const target = pickMovementTarget(sense);
+  if (!target) return null;
+  const label = getPlace(target)?.label ?? target;
+  const h = hottestHobby(sense);
+  return {
+    action_id: "go_to_place",
+    params: { place_id: target },
+    because: h
+      ? `Curiosity tugging at «${h.label}» — walking toward ${label}.`
+      : wonder
+        ? `Wonder pulls toward ${label}.`
+        : `Strolling toward ${label}.`,
+  };
 }
 
 function wonderOrCuriosityVisitBranch(
@@ -187,6 +239,8 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
   }
 
   {
+    const walk = wonderGoToPlaceBranch(sense, legal);
+    if (walk && Math.random() < 0.38) return walk;
     const branch = wonderOrCuriosityVisitBranch(sense, legal);
     if (branch) return branch;
   }
@@ -327,7 +381,7 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
       action_id: "propose_shared_diary_entry",
       params: {
         title: "A thought for our shared diary",
-        body: "When you have a moment — still unplaced, but the idea is ready.",
+        body: "When you have a moment — a small idea for our shared diary.",
       },
       because: "Curiosity wants to propose something shared (needs your YES).",
     };

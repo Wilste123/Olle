@@ -8,6 +8,7 @@ export interface Exhibition {
   url?: string;
   createdAt: string;
   active: boolean;
+  place_id: string;
 }
 
 export function cozyDefaultExhibitions(): Exhibition[] {
@@ -19,6 +20,7 @@ export function cozyDefaultExhibitions(): Exhibition[] {
       blurb: "Et lite rom med levende lys, ull og stille bilder — kos uten kalender.",
       createdAt,
       active: true,
+      place_id: "gallery_a",
     },
     {
       id: "ex-small-maps",
@@ -26,6 +28,7 @@ export function cozyDefaultExhibitions(): Exhibition[] {
       blurb: "Håndtegnede kart over steder som kanskje finnes; du trenger ikke reise dit.",
       createdAt,
       active: true,
+      place_id: "gallery_b",
     },
   ];
 }
@@ -33,6 +36,11 @@ export function cozyDefaultExhibitions(): Exhibition[] {
 export function ensureExhibitions(state: OlleWorldState): void {
   if (!state.exhibitions?.length) {
     state.exhibitions = cozyDefaultExhibitions();
+  }
+  for (const ex of state.exhibitions) {
+    if (!ex.place_id) {
+      ex.place_id = ex.id === "ex-small-maps" ? "gallery_b" : "gallery_a";
+    }
   }
 }
 
@@ -62,6 +70,7 @@ export function addExhibition(
     url: input.url?.trim() || undefined,
     createdAt: new Date().toISOString(),
     active: true,
+    place_id: "gallery_a",
   };
   state.exhibitions.push(exhibition);
   return exhibition;

@@ -39,7 +39,7 @@ apps/mind/           Mind loop + world/runtime (validate before speak)
 
 Feed entries follow Pino kinds: `did` / `noticed` / `felt` / `mind` with `why`, `ok`, `about`, `change`.
 
-**Placement:** Olle defaults to `{ status: "unplaced" }`. Mind ticks run fully while unplaced (private diary, rest, email stubs). Class C in Phase 0 is **shared diary proposals only** — no map pins or physical-world UI.
+**Placement / world v1:** Olle starts at **home_nook** on a small 2D map (`GET /world`). Class A `go_to_place` walks along `PLACE_GRAPH` neighbors; `visit_exhibition` moves him to the exhibition's room. Legacy `unplaced` saves migrate to home_nook on load (state v5). Class C in Phase 0 is **shared diary proposals only** — no GPS map pins.
 
 ## Autonomy experiment (hobbies)
 
