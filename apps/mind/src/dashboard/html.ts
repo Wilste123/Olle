@@ -56,6 +56,28 @@ export function renderDashboard(
     .map((line) => `<li>${esc(line)}</li>`)
     .join("");
 
+  const exhibitionItems = now.exhibitions
+    .map((e) => {
+      const status = e.active ? "åpen" : "lukket";
+      const link = e.url ? ` <a href="${esc(e.url)}" rel="noopener">lenke</a>` : "";
+      return `<li><strong>${esc(e.title)}</strong> <small>(${status})</small> — ${esc(e.blurb.slice(0, 100))}${link}</li>`;
+    })
+    .join("");
+
+  const lastVisit = now.lastVisitedExhibition
+    ? `${esc(now.lastVisitedExhibition.title)}${
+        now.lastVisitedExhibition.at ? ` <small>(${esc(now.lastVisitedExhibition.at)})</small>` : ""
+      }`
+    : "(ingen besøk ennå)";
+  const offeringItems = now.webOfferingsRecent
+    .map(
+      (o) =>
+        `<li>${esc(o.text.slice(0, 160))}${
+          o.gift_label ? ` <em>(${esc(o.gift_label)})</em>` : ""
+        } <small>${esc(o.received_at)}</small></li>`,
+    )
+    .join("");
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,6 +121,18 @@ export function renderDashboard(
   </p>
   <p>Doing: ${esc(now.doing)} · <a href="/chat">Prat</a> · <a href="/diary">Dagbok</a> · <a href="#diary">Dagbok ↓</a> · <a href="/api/now">/api/now</a> · <a href="/api/diary">/api/diary</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
   <p>Inventory: ${esc(now.inventorySummary)}</p>
+
+  <section>
+    <h2>Utstillinger</h2>
+    <p>Olle sist besøkte: ${lastVisit}</p>
+    <p>William offerings i kø: ${now.webOfferingsPending}</p>
+    <ul>${exhibitionItems || "<li>(ingen)</li>"}</ul>
+    ${
+      offeringItems
+        ? `<h3 style="font-size:1rem;margin-top:0.75rem">Nylige offerings</h3><ul>${offeringItems}</ul>`
+        : ""
+    }
+  </section>
 
   <section>
     <h2>Hobbies / threads</h2>
