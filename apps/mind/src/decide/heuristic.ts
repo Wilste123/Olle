@@ -1,4 +1,4 @@
-import type { DecideOutput, SenseSnapshot } from "@olle/protocol";
+import { getPlace, type DecideOutput, type SenseSnapshot } from "@olle/protocol";
 import { PRIVATE_DIARY_MIN_TICK_GAP } from "../hobbies/engine.js";
 import { extractHttpsUrl } from "../tools/research-url.js";
 import { maskLegalActionIds } from "./schema.js";
@@ -9,6 +9,107 @@ function hottestHobby(sense: SenseSnapshot) {
 
 function diaryAllowed(sense: SenseSnapshot): boolean {
   return sense.ticksSinceLastPrivateDiary >= PRIVATE_DIARY_MIN_TICK_GAP;
+}
+
+function pickExhibition(sense: SenseSnapshot): { id: string; title: string } | undefined {
+  const exs = sense.activeExhibitions ?? [];
+  if (!exs.length) return undefined;
+  const other = exs.filter((e) => e.id !== sense.lastVisitedExhibitionId);
+  const pool = other.length ? other : exs;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function pickMovementTarget(sense: SenseSnapshot): string | undefined {
+  const reach = sense.reachablePlaceIds ?? [];
+  if (!reach.length) return undefined;
+  const galleries = reach.filter((id) => id.startsWith("gallery_"));
+  const bench = reach.includes("quiet_bench") ? "quiet_bench" : undefined;
+  const h = hottestHobby(sense);
+  if (h && sense.feelings.needs.curiosity > sense.feelings.needs.wonder + 0.05 && galleries.length) {
+    const match = galleries.find((g) => h.label.toLowerCase().includes("kart") && g === "gallery_b");
+    return match ?? galleries[Math.floor(Math.random() * galleries.length)];
+  }
+  if (sense.feelings.needs.wonder > 0.58 && galleries.length) {
+    return galleries[Math.floor(Math.random() * galleries.length)];
+  }
+  if (sense.feelings.needs.curiosity > 0.52 && bench) return bench;
+  if (galleries.length && Math.random() < 0.5) return galleries[0];
+  return reach[Math.floor(Math.random() * reach.length)];
+}
+
+function wonderGoToPlaceBranch(
+  sense: SenseSnapshot,
+  legal: ReturnType<typeof maskLegalActionIds>,
+): DecideOutput | null {
+  if (sense.placement.status !== "placed") return null;
+  if (!legal.includes("go_to_place")) return null;
+  const wonder = sense.feelings.needs.wonder > 0.52;
+  const curious = sense.feelings.needs.curiosity > 0.48;
+  if (!wonder && !curious) return null;
+  const at = sense.placeId ?? "";
+  if (
+    wonder &&
+    legal.includes("visit_exhibition") &&
+    (sense.activeExhibitions?.length ?? 0) > 0 &&
+    sense.feelings.needs.wonder > 0.58
+  ) {
+    return null;
+  }
+  if (at === "gallery_a" || at === "gallery_b") return null;
+  const target = pickMovementTarget(sense);
+  if (!target) return null;
+  const label = getPlace(target)?.label ?? target;
+  const h = hottestHobby(sense);
+  return {
+    action_id: "go_to_place",
+    params: { place_id: target },
+    because: h
+      ? `Curiosity tugging at «${h.label}» — walking toward ${label}.`
+      : wonder
+        ? `Wonder pulls toward ${label}.`
+        : `Strolling toward ${label}.`,
+  };
+}
+
+function wonderOrCuriosityVisitBranch(
+  sense: SenseSnapshot,
+  legal: ReturnType<typeof maskLegalActionIds>,
+): DecideOutput | null {
+  const wonderHigh = sense.feelings.needs.wonder > 0.62;
+  const curiousWonder =
+    sense.feelings.needs.curiosity > 0.55 && sense.feelings.needs.wonder > 0.48;
+  if (!wonderHigh && !curiousWonder) return null;
+
+  const canVisit = legal.includes("visit_exhibition") && (sense.activeExhibitions?.length ?? 0) > 0;
+  const canWander = legal.includes("wander_curiosity");
+  if (!canVisit && !canWander) return null;
+
+  const preferVisit =
+    canVisit && (!canWander || Math.random() < 0.5 || (wonderHigh && Math.random() < 0.55));
+
+  if (preferVisit && canVisit) {
+    const ex = pickExhibition(sense);
+    if (ex) {
+      return {
+        action_id: "visit_exhibition",
+        params: { exhibition_id: ex.id },
+        because: wonderHigh
+          ? `Wonder is loud — drifting into «${ex.title}».`
+          : `Curiosity and wonder — visiting «${ex.title}».`,
+      };
+    }
+  }
+
+  if (canWander) {
+    const h = hottestHobby(sense);
+    return {
+      action_id: "wander_curiosity",
+      params: h ? { hobby_id: h.id } : {},
+      because: wonderHigh ? "Wonder is loud — wander a thread." : "Curiosity wander (exhibition or thread).",
+    };
+  }
+
+  return null;
 }
 
 /** Dry-run decide without LLM API keys. */
@@ -101,8 +202,8 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
       action_id: "reply_to_william",
       params: {},
       because: sense.williamMessagePreview
-        ? `William wrote: ${sense.williamMessagePreview.slice(0, 80)}`
-        : "William sent a message.",
+        ? `Unread from William: ${sense.williamMessagePreview.slice(0, 80)}`
+        : "Unread message from William.",
     };
   }
 
@@ -137,13 +238,11 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
     };
   }
 
-  if (sense.feelings.needs.wonder > 0.62 && legal.includes("wander_curiosity")) {
-    const h = hottestHobby(sense);
-    return {
-      action_id: "wander_curiosity",
-      params: h ? { hobby_id: h.id } : {},
-      because: "Wonder is loud — wander a thread.",
-    };
+  {
+    const walk = wonderGoToPlaceBranch(sense, legal);
+    if (walk && Math.random() < 0.38) return walk;
+    const branch = wonderOrCuriosityVisitBranch(sense, legal);
+    if (branch) return branch;
   }
 
   if (
@@ -211,24 +310,41 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
     }
   }
 
-  if (sense.feelings.needs.curiosity > 0.48 && legal.includes("wander_curiosity")) {
-    const h = hottestHobby(sense);
-    if (h && h.heat < 0.85 && Math.random() > 0.35) {
+  if (sense.feelings.needs.curiosity > 0.48) {
+    const mildWonder =
+      sense.feelings.needs.wonder > 0.42 &&
+      legal.includes("visit_exhibition") &&
+      (sense.activeExhibitions?.length ?? 0) > 0 &&
+      Math.random() < 0.28;
+    if (mildWonder) {
+      const ex = pickExhibition(sense);
+      if (ex) {
+        return {
+          action_id: "visit_exhibition",
+          params: { exhibition_id: ex.id },
+          because: `Soft pull toward «${ex.title}».`,
+        };
+      }
+    }
+    if (legal.includes("wander_curiosity")) {
+      const h = hottestHobby(sense);
+      if (h && h.heat < 0.85 && Math.random() > 0.35) {
+        return {
+          action_id: "wander_curiosity",
+          params: { hobby_id: h.id },
+          because: `Wandering with the thread «${h.label}».`,
+        };
+      }
       return {
         action_id: "wander_curiosity",
-        params: { hobby_id: h.id },
-        because: `Wandering with the thread «${h.label}».`,
+        params: {},
+        because: "Low-stakes curiosity wander (maybe a new hobby).",
       };
     }
-    return {
-      action_id: "wander_curiosity",
-      params: {},
-      because: "Low-stakes curiosity wander (maybe a new hobby).",
-    };
   }
 
   if (
-    sense.feelings.needs.expression > 0.72 &&
+    sense.feelings.needs.expression > 0.78 &&
     legal.includes("append_private_diary") &&
     diaryAllowed(sense)
   ) {
@@ -265,7 +381,7 @@ export function heuristicDecide(sense: SenseSnapshot): DecideOutput {
       action_id: "propose_shared_diary_entry",
       params: {
         title: "A thought for our shared diary",
-        body: "When you have a moment — still unplaced, but the idea is ready.",
+        body: "When you have a moment — a small idea for our shared diary.",
       },
       because: "Curiosity wants to propose something shared (needs your YES).",
     };

@@ -4,7 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 export const SESSION_COOKIE = "olle_session";
 const SESSION_DAYS = 30;
 
-/** LAN / Fly / public internet: password + signed session cookie required. */
+/** Fly / LAN / public internet: password + signed session cookie required. */
 export function isProductionAuthEnabled(): boolean {
   return process.env.OLLE_PUBLIC === "1" || Boolean(process.env.FLY_APP_NAME?.trim());
 }

@@ -138,7 +138,7 @@ describe("session auth gate", () => {
         headers: { Cookie: cookieHeader.split(";")[0] ?? "" },
       });
       expect(dash.status).toBe(200);
-      expect(dash.body).toContain("Olle");
+      expect(dash.body).toContain("Olles verden");
 
       const kiosk = await request(server, "GET", "/kiosk", {
         headers: { Cookie: cookieHeader.split(";")[0] ?? "" },

@@ -4,6 +4,7 @@ import { heuristicDecide } from "../decide/heuristic.js";
 import type { SenseSnapshot } from "@olle/protocol";
 import { emptyWorldState } from "../test/world-fixture.js";
 import { appendWilliamMessage } from "./messages.js";
+import { HeuristicProvider } from "../llm/heuristic-provider.js";
 import { applyAct, finalizeAct, validateAct } from "../world/runtime.js";
 import type { OlleWorldState } from "../world/store.js";
 
@@ -31,6 +32,9 @@ function senseFor(state: OlleWorldState): SenseSnapshot {
     inventory: state.inventory,
     inventorySummary: "(empty)",
     webFetchesRemaining: 12,
+    topOpinions: [],
+    activeExhibitions: [],
+    webOfferingsSinceLastTick: 0,
   };
 }
 
@@ -47,9 +51,17 @@ describe("reply_to_william flow", () => {
     const act = await applyAct(state, decision, validation, email);
     expect(act.pendingSpeakKind).toBe("reply_to_william");
 
-    await finalizeAct(state, decision, act, "Hei William — godt å høre fra deg.", email);
+    const spoke = await new HeuristicProvider().speak({
+      lockedDecision: decision,
+      feelings: state.feelings,
+      memorySnippets: [],
+      worldOk: true,
+      williamMessageText: "hei olle",
+    });
+    expect(spoke.text).not.toMatch(/William wrote/i);
+    await finalizeAct(state, decision, act, spoke.text, email);
     const olleMsg = state.conversation?.find((m) => m.from === "olle");
-    expect(olleMsg?.text).toContain("Hei William");
+    expect(olleMsg?.text).toBe(spoke.text);
     expect(state.conversation?.every((m) => m.from !== "william" || m.read_by_olle)).toBe(true);
   });
 });

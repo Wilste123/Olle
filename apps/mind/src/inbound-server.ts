@@ -12,6 +12,7 @@ import { conversationForApi } from "./conversation/messages.js";
 import { renderChatPage } from "./dashboard/chat.js";
 import { renderDiaryPage } from "./dashboard/diary.js";
 import { renderDashboard } from "./dashboard/html.js";
+import { renderWorldPage } from "./dashboard/world.js";
 import { authorizeLocalMessage } from "./http/local-auth.js";
 import {
   clearSessionCookie,
@@ -25,6 +26,7 @@ import {
   verifyLoginPassword,
 } from "./http/session-auth.js";
 import { renderKioskPage } from "./dashboard/kiosk.js";
+import { postWilliamExhibition, postWilliamOffering } from "./api/william-web.js";
 import { loadState } from "./world/store.js";
 
 loadOlleEnv();
@@ -111,13 +113,57 @@ export function createInboundServer(): http.Server {
       return;
     }
 
+    if (req.method === "GET" && urlPath === "/logout") {
+      if (isProductionAuthEnabled()) {
+        clearSessionCookie(res);
+      }
+      res.writeHead(302, { Location: isProductionAuthEnabled() ? "/login" : "/dashboard" });
+      res.end();
+      return;
+    }
+
+    if (req.method === "GET" && urlPath === "/login") {
+      const q = new URL(req.url ?? "", "http://local").searchParams;
+      const next = q.get("next") ?? "/dashboard";
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(renderLoginPage({ next }));
+      return;
+    }
+
+    if (req.method === "POST" && urlPath === "/login") {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const raw = Buffer.concat(chunks).toString("utf8");
+      const form = parseFormUrlEncoded(raw);
+      const password = form.password ?? "";
+      const next = form.next?.startsWith("/") ? form.next : "/dashboard";
+      if (!verifyLoginPassword(password)) {
+        res.writeHead(401, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(renderLoginPage({ error: "Feil passord.", next }));
+        return;
+      }
+      setSessionCookie(res);
+      res.writeHead(302, { Location: next });
+      res.end();
+      return;
+    }
+
+    if (
+      isProductionAuthEnabled() &&
+      !isPublicRoute(req.method ?? "GET", urlPath) &&
+      !isAuthenticated(req)
+    ) {
+      sendUnauthorized(req, res, urlPath);
+      return;
+    }
+
     if (req.method === "GET" && urlPath === "/health") {
       json(res, 200, { ok: true, service: "olle-inbound" });
       return;
     }
 
     if (req.method === "GET" && urlPath === "/kiosk") {
-      const includeWorld = url.searchParams.get("view") === "world";
+      const includeWorld = new URL(req.url ?? "", "http://local").searchParams.get("view") === "world";
       const html = renderKioskPage(includeWorld);
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(html);
@@ -131,6 +177,14 @@ export function createInboundServer(): http.Server {
         buildFeedSnapshot(state, 30),
         buildAuditSnapshot(state, 40),
       );
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(html);
+      return;
+    }
+
+    if (req.method === "GET" && urlPath === "/world") {
+      const state = await loadState();
+      const html = renderWorldPage(buildNowSnapshot(state), buildFeedSnapshot(state, 40));
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(html);
       return;
@@ -178,6 +232,49 @@ export function createInboundServer(): http.Server {
 
     if (req.method === "GET" && urlPath === "/api/conversation") {
       json(res, 200, await getConversationJson());
+      return;
+    }
+
+    if (req.method === "POST" && urlPath === "/api/offering") {
+      if (!authorizeLocalMessage(req)) {
+        json(res, 403, { ok: false, error: "Forbidden" });
+        return;
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const raw = Buffer.concat(chunks).toString("utf8");
+      try {
+        const body = JSON.parse(raw) as { text?: string; gift_label?: string };
+        const result = await postWilliamOffering({
+          text: String(body.text ?? ""),
+          gift_label: body.gift_label,
+        });
+        json(res, result.ok ? 200 : 400, result);
+      } catch {
+        json(res, 400, { ok: false, error: "Invalid JSON" });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && urlPath === "/api/exhibitions") {
+      if (!authorizeLocalMessage(req)) {
+        json(res, 403, { ok: false, error: "Forbidden" });
+        return;
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const raw = Buffer.concat(chunks).toString("utf8");
+      try {
+        const body = JSON.parse(raw) as { title?: string; blurb?: string; url?: string };
+        const result = await postWilliamExhibition({
+          title: String(body.title ?? ""),
+          blurb: String(body.blurb ?? ""),
+          url: body.url ? String(body.url) : undefined,
+        });
+        json(res, result.ok ? 200 : 400, result);
+      } catch {
+        json(res, 400, { ok: false, error: "Invalid JSON" });
+      }
       return;
     }
 
@@ -243,9 +340,9 @@ export function createInboundServer(): http.Server {
 
 export function startInboundServer(): http.Server {
   const server = createInboundServer();
-  const bindHost = process.env.OLLE_BIND_HOST ?? "127.0.0.1";
-  server.listen(PORT, bindHost, () => {
-    console.log(`[olle-inbound] listening on http://${bindHost}:${PORT}`);
+  const host = process.env.OLLE_BIND_HOST ?? "0.0.0.0";
+  server.listen(PORT, host, () => {
+    console.log(`[olle-inbound] listening on http://${host}:${PORT}`);
     if (isProductionAuthEnabled()) {
       console.log("[olle-inbound] session auth enabled (William login)");
     }

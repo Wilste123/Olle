@@ -73,6 +73,7 @@ export class AnthropicProvider implements LlmProvider {
       recent_feed: ctx.sense.recentFeedTail,
       email_budget_remaining: ctx.sense.emailBudgetRemaining,
       open_permissions: ctx.sense.openPermissionCount,
+      top_opinions: ctx.sense.topOpinions,
     };
 
     try {
@@ -123,13 +124,17 @@ export class AnthropicProvider implements LlmProvider {
       world_reject_reason: ctx.worldRejectReason,
       feelings: ctx.feelings,
       memory_snippets: ctx.memorySnippets,
+      placement: ctx.placement,
+      william_message: ctx.williamMessageText,
+      research_url: ctx.researchUrl,
+      research_excerpt_for_summary_only: ctx.researchExcerpt?.slice(0, 2000),
     };
 
     try {
       const message = await this.client.messages.create({
         model: this.speakModel,
         max_tokens: 320,
-        system: `${OLLE_VOICE}\n\nYou are the SPEAK step only. The action is LOCKED — do not choose or suggest any action. Generate the short outward line (diary or email body). If world_ok is false, briefly acknowledge the rejection. No JSON. Max ~3 sentences.`,
+        system: `${OLLE_VOICE}\n\nYou are the SPEAK step only. The action is LOCKED — do not choose or suggest any action. Generate the short outward line (diary, chat reply, or email body). For reply_to_william, answer william_message in natural Norwegian (bokmål): warm, direct — do NOT quote their message or say "William wrote". For research_topic, summarize research_excerpt_for_summary_only briefly in the private diary voice. If world_ok is false, briefly acknowledge the rejection. No JSON. Max ~3 sentences unless summarizing research.`,
         messages: [
           {
             role: "user",

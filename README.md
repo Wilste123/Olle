@@ -39,7 +39,7 @@ apps/mind/           Mind loop + world/runtime (validate before speak)
 
 Feed entries follow Pino kinds: `did` / `noticed` / `felt` / `mind` with `why`, `ok`, `about`, `change`.
 
-**Placement:** Olle defaults to `{ status: "unplaced" }`. Mind ticks run fully while unplaced (private diary, rest, email stubs). Class C in Phase 0 is **shared diary proposals only** — no map pins or physical-world UI.
+**Placement / world v1:** Olle starts at **home_nook** on a small 2D map (`GET /world`). Class A `go_to_place` walks along `PLACE_GRAPH` neighbors; `visit_exhibition` moves him to the exhibition's room. Legacy `unplaced` saves migrate to home_nook on load (state v5). Class C in Phase 0 is **shared diary proposals only** — no GPS map pins.
 
 ## Autonomy experiment (hobbies)
 
@@ -65,7 +65,7 @@ State **version 2** adds `survival.hunger`, `purse.coins`, and `inventory[]` (no
 
 1. `cp .env.example .env` — secrets only in `.env` (never committed).
 2. `npm install && npm run build && npm test` — all green.
-3. `npm start` — mind loop, inbound webhook, and dashboard at `http://127.0.0.1:8787/dashboard`.
+3. `npm run dev` — mind loop, inbound webhook, and dashboard at `http://127.0.0.1:8787/dashboard`.
 4. Without API keys — heuristic mind still ticks; with `OPENAI_API_KEY` (default) or `ANTHROPIC_API_KEY` — LLM decide/speak.
 5. Permission E2E — Class C → email mock or Resend → `olle permit approve <id>` **or** inbound `YES <id>` → shared diary `published`.
 
@@ -82,7 +82,8 @@ cp .env.example .env   # set WILLIAM_EMAIL at minimum
 npm install
 npm run build
 npm test
-npm start            # live Olle (tick loop + inbound server)
+npm run dev          # live Olle with tsx (tick loop + inbound server)
+npm start            # production (requires npm run build first)
 ```
 
 One-shot tick (debug):
@@ -148,7 +149,7 @@ Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured
 
 ## Actions (Phase 0)
 
-- **Class A:** `continue_activity`, `feel_and_note`, `rest`, `think_about`, `remember`, `read_world`, `draft_email`, `sleep`, `nurse_hobby`, `wander_curiosity`, `play_solo`, `eat`, `forage`, `buy_from_supply`, `craft_expression`
+- **Class A:** `continue_activity`, `feel_and_note`, `rest`, `think_about`, `remember`, `read_world`, `draft_email`, `sleep`, `nurse_hobby`, `wander_curiosity`, `visit_exhibition`, `play_solo`, `eat`, `forage`, `buy_from_supply`, `craft_expression`
 - **Class B:** `append_private_diary`, `notify_william`, `ask_william_for`, `reply_to_william`, `email_william`
 - **Class C:** `propose_shared_diary_entry` (permission-gated)
 - **Class D:** `add_map_pin` — blocked
@@ -157,11 +158,24 @@ Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured
 
 **Outbound:** set `RESEND_API_KEY`, `OLLE_EMAIL_FROM`, and `WILLIAM_EMAIL`.
 
-**Inbound:** `npm start` exposes `POST /webhooks/email/inbound`. Route Resend inbound (or ngrok) to that path; body may be Resend JSON or `{ "from", "text" }`. Non-permission mail becomes **offerings** (queued for Sense).
+**Inbound:** `npm run dev` / Fly deploy exposes `POST /webhooks/email/inbound`.
+
+**Fly hosting:** [docs/olle-fly.md](docs/olle-fly.md) — Docker image, volume-backed state, William session login on `/login`. Route Resend inbound (or ngrok) to that path; body may be Resend JSON or `{ "from", "text" }`. Non-permission mail becomes **offerings** (queued for Sense).
 
 **Dashboard (Phase 1):** `GET /`, `/dashboard`, `/kiosk`, `/diary`, `/api/now`, `/api/diary`, `/api/feed`, `/api/audit` on the same port as inbound. Private diary lines (William-readable) appear on the dashboard and in `/api/diary`. **Kiosk:** fullscreen wall UI polling `/api/now` — see [docs/olle-kiosk-display.md](docs/olle-kiosk-display.md). With `OLLE_PUBLIC=1`, `/kiosk` requires the same session login as the dashboard.
 
 **Talk to Olle:** `GET /chat`, `POST /api/message` `{ "text": "..." }` (localhost or `OLLE_MESSAGE_TOKEN`), CLI `npm run olle -- say "hei olle"`. Replies land in `conversation` on the next mind tick (`reply_to_william`).
+
+### Web exhibitions & offerings (William)
+
+Olle's **web museum** holds changing `exhibitions` in state (two cozy defaults on a fresh save). When wonder/curiosity runs high, the heuristic may `visit_exhibition` or `wander_curiosity`.
+
+| Endpoint | Body | Auth |
+|----------|------|------|
+| `POST /api/offering` | `{ "text", "gift_label"? }` | Same as `/api/message` (localhost or `Bearer OLLE_MESSAGE_TOKEN`) |
+| `POST /api/exhibitions` | `{ "title", "blurb", "url"? }` | Same |
+
+Offerings queue like inbound email and are absorbed on the next mind tick. Dashboard block **Utstillinger** lists exhibitions, last visit, and recent offerings.
 
 ## Repo layout
 

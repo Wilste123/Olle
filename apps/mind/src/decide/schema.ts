@@ -45,6 +45,9 @@ export function maskLegalActionIds(options: {
   if ((options.webFetchesRemaining ?? 1) <= 0) {
     blocked.add("research_topic");
   }
+  if (options.placementUnplaced) {
+    blocked.add("go_to_place");
+  }
   // Class C shared diary works while unplaced — only map etc. deferred
   for (const a of ACTION_MANIFEST) {
     if (a.class === "D") blocked.add(a.id);

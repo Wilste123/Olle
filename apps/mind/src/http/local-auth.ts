@@ -11,7 +11,7 @@ function isLoopback(ip: string): boolean {
   return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1" || ip === "";
 }
 
-/** Dashboard message POST: session (LAN/Fly), localhost, or `Authorization: Bearer <OLLE_MESSAGE_TOKEN>`. */
+/** Dashboard message POST: session (Fly/LAN), localhost, or `Authorization: Bearer <OLLE_MESSAGE_TOKEN>`. */
 export function authorizeLocalMessage(req: IncomingMessage): boolean {
   if (isProductionAuthEnabled()) return isAuthenticated(req);
   const token = process.env.OLLE_MESSAGE_TOKEN?.trim();

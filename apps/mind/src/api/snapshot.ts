@@ -1,14 +1,21 @@
-import type { HobbyThread } from "@olle/protocol";
+import type { HobbyThread, OpinionView } from "@olle/protocol";
 import type { OlleWorldState } from "../world/store.js";
+import { topOpinionsByConfidence } from "../mind/opinions.js";
 import { inventorySummary } from "../survival/inventory.js";
 import { loudestHobbies } from "../hobbies/engine.js";
 import { getEmailBudgetRemaining } from "../email/rate-limits.js";
 import { countUnreadFromWilliam } from "../conversation/messages.js";
 import { countUnprocessedInbound } from "../inbound/offering.js";
+import { countUnprocessedWebOfferings, recentWebOfferings } from "../inbound/web-offering.js";
+import type { Exhibition } from "../world/exhibitions.js";
+import { findExhibition, getActiveExhibitions } from "../world/exhibitions.js";
+import { placementLabel } from "../world/places.js";
+import { resolveLlmProviderName } from "../llm/factory.js";
 
 export interface NowSnapshot {
   at: string;
   placement: OlleWorldState["placement"];
+  placeLabel: string;
   tickCount: number;
   feelings: OlleWorldState["feelings"];
   lastActivity: string;
@@ -27,6 +34,14 @@ export interface NowSnapshot {
   inventorySummary: string;
   /** Last 50 private diary lines, newest first (William-readable). */
   privateDiaryTail: string[];
+  topOpinions: OpinionView[];
+  exhibitions: Exhibition[];
+  lastVisitedExhibition?: { id: string; title: string; at?: string };
+  webOfferingsPending: number;
+  webOfferingsRecent: { id: string; text: string; gift_label?: string; received_at: string }[];
+  llmProvider: "heuristic" | "openai" | "anthropic";
+  /** Shown on dashboard when running without API keys. */
+  llmProviderHint?: string;
 }
 
 export const PRIVATE_DIARY_TAIL_LIMIT = 50;
@@ -53,6 +68,7 @@ export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
   return {
     at: new Date().toISOString(),
     placement: state.placement,
+    placeLabel: placementLabel(state),
     tickCount: state.tickCount,
     feelings: state.feelings,
     lastActivity: state.lastActivity,
@@ -70,6 +86,34 @@ export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
     purse: state.purse,
     inventorySummary: inventorySummary(state),
     privateDiaryTail: privateDiaryTailNewestFirst(state),
+    topOpinions: topOpinionsByConfidence(state, 5).map((o) => ({
+      topic: o.topic,
+      stance: o.stance,
+      confidence: o.confidence,
+    })),
+    exhibitions: getActiveExhibitions(state).concat(
+      (state.exhibitions ?? []).filter((e) => !e.active),
+    ),
+    lastVisitedExhibition: state.lastVisitedExhibitionId
+      ? (() => {
+          const ex = findExhibition(state, state.lastVisitedExhibitionId!);
+          return ex
+            ? { id: ex.id, title: ex.title, at: state.lastVisitedExhibitionAt }
+            : { id: state.lastVisitedExhibitionId, title: state.lastVisitedExhibitionId };
+        })()
+      : undefined,
+    webOfferingsPending: countUnprocessedWebOfferings(state),
+    webOfferingsRecent: recentWebOfferings(state, 8).map((o) => ({
+      id: o.id,
+      text: o.text,
+      gift_label: o.gift_label,
+      received_at: o.received_at,
+    })),
+    llmProvider: resolveLlmProviderName(),
+    llmProviderHint:
+      resolveLlmProviderName() === "heuristic"
+        ? "Heuristic mode — set OPENAI_API_KEY (or OLLE_LLM_PROVIDER=openai) in .env and restart for richer speak."
+        : undefined,
   };
 }
 
@@ -87,6 +131,8 @@ export function buildAuditSnapshot(state: OlleWorldState, limit = 80) {
     "execution_failed",
     "email_suppressed",
     "inbound_offering",
+    "web_offering",
+    "exhibition_added",
   ]);
   return state.audit.filter((a) => permKinds.has(a.kind)).slice(-limit);
 }
