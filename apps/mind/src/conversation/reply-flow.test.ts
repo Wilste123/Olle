@@ -32,6 +32,7 @@ function senseFor(state: OlleWorldState): SenseSnapshot {
     inventory: state.inventory,
     inventorySummary: "(empty)",
     webFetchesRemaining: 12,
+    topOpinions: [],
     activeExhibitions: [],
     webOfferingsSinceLastTick: 0,
   };

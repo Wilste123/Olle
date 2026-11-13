@@ -42,6 +42,7 @@ import {
   williamUnreadSinceLastTick,
 } from "./conversation/messages.js";
 import { processInboundForTick } from "./inbound/offering.js";
+import { opinionLinesForMemory, topOpinionsByConfidence } from "./mind/opinions.js";
 import { processWebOfferingsForTick } from "./inbound/web-offering.js";
 import { activeExhibitionsForSense, ensureExhibitions } from "./world/exhibitions.js";
 import { ensurePlacement, placementLabel, reachableFromState, currentPlaceId } from "./world/places.js";
@@ -97,9 +98,10 @@ export async function runMindTick(): Promise<TickResult> {
   const inboundProcessed = processInboundForTick(state);
   const webOfferingsProcessed = processWebOfferingsForTick(state);
   const memorySnippets = [
+    ...opinionLinesForMemory(state, 3),
     ...state.memories.slice(-5).map((m) => m.text),
     ...state.privateDiary.slice(-5),
-  ].slice(-8);
+  ].slice(-10);
 
   const sense: SenseSnapshot = {
     at: new Date().toISOString(),
@@ -122,6 +124,11 @@ export async function runMindTick(): Promise<TickResult> {
     inventory: state.inventory,
     inventorySummary: inventorySummary(state),
     webFetchesRemaining: webFetchesRemaining(state),
+    topOpinions: topOpinionsByConfidence(state, 5).map((o) => ({
+      topic: o.topic,
+      stance: o.stance,
+      confidence: o.confidence,
+    })),
     activeExhibitions: activeExhibitionsForSense(state),
     lastVisitedExhibitionId: state.lastVisitedExhibitionId,
     webOfferingsSinceLastTick: webOfferingsProcessed.newCount,

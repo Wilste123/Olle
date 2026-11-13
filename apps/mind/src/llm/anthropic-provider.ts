@@ -73,6 +73,7 @@ export class AnthropicProvider implements LlmProvider {
       recent_feed: ctx.sense.recentFeedTail,
       email_budget_remaining: ctx.sense.emailBudgetRemaining,
       open_permissions: ctx.sense.openPermissionCount,
+      top_opinions: ctx.sense.topOpinions,
     };
 
     try {

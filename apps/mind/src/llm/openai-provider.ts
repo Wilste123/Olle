@@ -74,6 +74,7 @@ export class OpenAiProvider implements LlmProvider {
       survival: ctx.sense.survival,
       purse: ctx.sense.purse,
       inventory_summary: ctx.sense.inventorySummary,
+      top_opinions: ctx.sense.topOpinions,
       william_message: ctx.sense.williamMessageText,
     };
 

@@ -5,6 +5,7 @@ import { normalizeFeelings } from "../feelings/normalize.js";
 export function emptyWorldState(over: Partial<OlleWorldState> = {}): OlleWorldState {
   return {
     version: 5,
+    opinions: [],
     placement: { status: "placed", place_id: "home_nook", since: new Date().toISOString() },
     olleDay: 0,
     feelings: normalizeFeelings({ mood: 0, energy: 0.8 }),

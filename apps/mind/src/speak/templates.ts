@@ -25,6 +25,10 @@ export function speakAfterDecide(
       return `I'd like to add to our shared diary when you approve: "${String(decision.params.title ?? "")}"`;
     case "research_topic":
       return `Read something online: ${decision.because} (short notes in diary).`;
+    case "think_about":
+      return `Tenker på ${String(decision.params.topic ?? "noe")}: ${decision.because}`;
+    case "reflect_on":
+      return `Reflekterer over ${String(decision.params.topic ?? "noe")}: ${decision.because}`;
     case "visit_exhibition":
       return `*(utstilling)* ${decision.because} — ${moodWord} mood, taking notes privately.`;
     case "play_solo":

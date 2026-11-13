@@ -132,6 +132,12 @@ export const ACTION_MANIFEST: readonly ActionDefinition[] = [
     paramsSchema: { topic: "string" },
   },
   {
+    id: "reflect_on",
+    class: "A",
+    description: "Revisit a topic and sharpen a private opinion",
+    paramsSchema: { topic: "string" },
+  },
+  {
     id: "remember",
     class: "A",
     description: "Strengthen or weaken a memory slot",
@@ -304,6 +310,21 @@ export interface FeelingsState {
   affection: number;
 }
 
+export interface Opinion {
+  topic: string;
+  stance: string;
+  confidence: number;
+  because: string;
+  sources: string[];
+  at: string;
+}
+
+export interface OpinionView {
+  topic: string;
+  stance: string;
+  confidence: number;
+}
+
 export interface SenseSnapshot {
   at: string;
   olleDay: number;
@@ -325,6 +346,8 @@ export interface SenseSnapshot {
   inventory: InventoryItem[];
   inventorySummary: string;
   webFetchesRemaining: number;
+  /** Strongest private stances for decide context (Class B display on dashboard). */
+  topOpinions: OpinionView[];
   /** Active exhibitions for decide (id + title). */
   activeExhibitions: { id: string; title: string }[];
   lastVisitedExhibitionId?: string;

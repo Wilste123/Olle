@@ -4,6 +4,7 @@ import type {
   FeelingsState,
   HobbyThread,
   InventoryItem,
+  Opinion,
   PermissionRequestRecord,
   Placement,
   PurseState,
@@ -110,6 +111,7 @@ export interface OlleWorldState {
     truncated?: boolean;
     at: string;
   };
+  opinions: Opinion[];
   exhibitions?: Exhibition[];
   webOfferings?: WebOffering[];
   lastVisitedExhibitionId?: string;
@@ -143,6 +145,7 @@ const DEFAULT_STATE = (): OlleWorldState => ({
   survival: { hunger: 0.35 },
   purse: { coins: 3, lifetime_earned: 3 },
   inventory: [],
+  opinions: [],
   exhibitions: cozyDefaultExhibitions(),
   webOfferings: [],
 });
@@ -158,7 +161,7 @@ export function dedupeConsecutiveDiaryLines(lines: string[]): string[] {
   return out;
 }
 
-function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): OlleWorldState {
+export function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): OlleWorldState {
   const base = {
     ...DEFAULT_STATE(),
     ...parsed,
@@ -174,6 +177,7 @@ function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): O
     inventory: parsed.inventory ?? [],
     researchFetches: parsed.researchFetches ?? [],
     lastResearch: parsed.lastResearch,
+    opinions: parsed.opinions ?? [],
     exhibitions:
       parsed.exhibitions ??
       (parsed.version == null || (parsed.version ?? 1) < 4 ? cozyDefaultExhibitions() : []),
@@ -184,6 +188,9 @@ function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): O
   base.feelings = normalizeFeelings(parsed.feelings);
   if ((parsed.version ?? 1) < 2) {
     ensureSurvivalState(base);
+  }
+  if (!base.opinions) {
+    base.opinions = [];
   }
   if ((parsed.version ?? 1) < 5) {
     ensurePlacement(base);

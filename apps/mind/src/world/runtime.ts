@@ -38,6 +38,7 @@ import {
   inventorySummary,
   rollForageLoot,
 } from "../survival/inventory.js";
+import { ingestImpressionFromAction, topOpinionsByConfidence } from "../mind/opinions.js";
 import { findExhibition, getActiveExhibitions } from "./exhibitions.js";
 import {
   appendAudit,
@@ -194,7 +195,10 @@ export async function applyAct(
       break;
     case "think_about":
       state.lastActivity = `thinking: ${String(params.topic ?? "")}`;
-      break;
+      return { ok: true, pendingSpeakKind: "private_diary" };
+    case "reflect_on":
+      state.lastActivity = `reflecting: ${String(params.topic ?? "")}`;
+      return { ok: true, pendingSpeakKind: "private_diary" };
     case "remember":
       state.lastActivity = "remembering";
       break;
@@ -456,6 +460,15 @@ export async function finalizeAct(
         const hot = loudestOrRandom(state);
         if (hot) bumpHobby(state, hot.id, 0.06, line.slice(0, 280));
       }
+      const ingested = ingestImpressionFromAction(state, decision.action_id, decision.params, line);
+      if (ingested) {
+        appendPinoFeed(state, "noticed", `Mening: ${ingested.stance.slice(0, 120)}`, {
+          ok: true,
+          action_id: decision.action_id,
+          about: ingested.topic,
+          change: "opinion",
+        });
+      }
       appendPinoFeed(state, "did", line, {
         why: decision.because,
         ok: true,
@@ -614,6 +627,11 @@ function hobbySenseFromState(state: OlleWorldState): SenseSnapshot {
     inventory: state.inventory,
     inventorySummary: inventorySummary(state),
     webFetchesRemaining: webFetchesRemaining(state),
+    topOpinions: topOpinionsByConfidence(state, 5).map((o) => ({
+      topic: o.topic,
+      stance: o.stance,
+      confidence: o.confidence,
+    })),
     activeExhibitions: state.exhibitions?.filter((e) => e.active).map((e) => ({ id: e.id, title: e.title })) ?? [],
     lastVisitedExhibitionId: state.lastVisitedExhibitionId,
     webOfferingsSinceLastTick: 0,

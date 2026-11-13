@@ -1,5 +1,6 @@
-import type { HobbyThread } from "@olle/protocol";
+import type { HobbyThread, OpinionView } from "@olle/protocol";
 import type { OlleWorldState } from "../world/store.js";
+import { topOpinionsByConfidence } from "../mind/opinions.js";
 import { inventorySummary } from "../survival/inventory.js";
 import { loudestHobbies } from "../hobbies/engine.js";
 import { getEmailBudgetRemaining } from "../email/rate-limits.js";
@@ -33,6 +34,7 @@ export interface NowSnapshot {
   inventorySummary: string;
   /** Last 50 private diary lines, newest first (William-readable). */
   privateDiaryTail: string[];
+  topOpinions: OpinionView[];
   exhibitions: Exhibition[];
   lastVisitedExhibition?: { id: string; title: string; at?: string };
   webOfferingsPending: number;
@@ -84,6 +86,11 @@ export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
     purse: state.purse,
     inventorySummary: inventorySummary(state),
     privateDiaryTail: privateDiaryTailNewestFirst(state),
+    topOpinions: topOpinionsByConfidence(state, 5).map((o) => ({
+      topic: o.topic,
+      stance: o.stance,
+      confidence: o.confidence,
+    })),
     exhibitions: getActiveExhibitions(state).concat(
       (state.exhibitions ?? []).filter((e) => !e.active),
     ),
