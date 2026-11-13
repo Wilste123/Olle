@@ -24,6 +24,7 @@ import {
   setSessionCookie,
   verifyLoginPassword,
 } from "./http/session-auth.js";
+import { postWilliamExhibition, postWilliamOffering } from "./api/william-web.js";
 import { loadState } from "./world/store.js";
 
 loadOlleEnv();
@@ -169,6 +170,49 @@ export function createInboundServer(): http.Server {
 
     if (req.method === "GET" && urlPath === "/api/conversation") {
       json(res, 200, await getConversationJson());
+      return;
+    }
+
+    if (req.method === "POST" && urlPath === "/api/offering") {
+      if (!authorizeLocalMessage(req)) {
+        json(res, 403, { ok: false, error: "Forbidden" });
+        return;
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const raw = Buffer.concat(chunks).toString("utf8");
+      try {
+        const body = JSON.parse(raw) as { text?: string; gift_label?: string };
+        const result = await postWilliamOffering({
+          text: String(body.text ?? ""),
+          gift_label: body.gift_label,
+        });
+        json(res, result.ok ? 200 : 400, result);
+      } catch {
+        json(res, 400, { ok: false, error: "Invalid JSON" });
+      }
+      return;
+    }
+
+    if (req.method === "POST" && urlPath === "/api/exhibitions") {
+      if (!authorizeLocalMessage(req)) {
+        json(res, 403, { ok: false, error: "Forbidden" });
+        return;
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const raw = Buffer.concat(chunks).toString("utf8");
+      try {
+        const body = JSON.parse(raw) as { title?: string; blurb?: string; url?: string };
+        const result = await postWilliamExhibition({
+          title: String(body.title ?? ""),
+          blurb: String(body.blurb ?? ""),
+          url: body.url ? String(body.url) : undefined,
+        });
+        json(res, result.ok ? 200 : 400, result);
+      } catch {
+        json(res, 400, { ok: false, error: "Invalid JSON" });
+      }
       return;
     }
 

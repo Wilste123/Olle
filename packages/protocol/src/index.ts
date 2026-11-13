@@ -113,6 +113,12 @@ export const ACTION_MANIFEST: readonly ActionDefinition[] = [
     paramsSchema: { hobby_id: "optional_string", spawn_label: "optional_string" },
   },
   {
+    id: "visit_exhibition",
+    class: "A",
+    description: "Visit a museum exhibition in Olle's web world",
+    paramsSchema: { exhibition_id: "string" },
+  },
+  {
     id: "research_topic",
     class: "A",
     description: "Read the internet (HTTPS GET); pass url or paste https link in chat (query optional with search API)",
@@ -270,6 +276,10 @@ export interface SenseSnapshot {
   inventory: InventoryItem[];
   inventorySummary: string;
   webFetchesRemaining: number;
+  /** Active exhibitions for decide (id + title). */
+  activeExhibitions: { id: string; title: string }[];
+  lastVisitedExhibitionId?: string;
+  webOfferingsSinceLastTick: number;
 }
 
 export interface PermissionRequestRecord {

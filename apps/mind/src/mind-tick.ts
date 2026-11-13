@@ -42,6 +42,8 @@ import {
   williamUnreadSinceLastTick,
 } from "./conversation/messages.js";
 import { processInboundForTick } from "./inbound/offering.js";
+import { processWebOfferingsForTick } from "./inbound/web-offering.js";
+import { activeExhibitionsForSense, ensureExhibitions } from "./world/exhibitions.js";
 
 export interface TickResult {
   decision?: DecideOutput;
@@ -89,7 +91,9 @@ export async function runMindTick(): Promise<TickResult> {
   syncSustenanceNeed(state.feelings, state.survival.hunger);
   state.feelings.feelingWords = deriveFeelingWords(state.feelings);
 
+  ensureExhibitions(state);
   const inboundProcessed = processInboundForTick(state);
+  const webOfferingsProcessed = processWebOfferingsForTick(state);
   const memorySnippets = [
     ...state.memories.slice(-5).map((m) => m.text),
     ...state.privateDiary.slice(-5),
@@ -106,7 +110,8 @@ export async function runMindTick(): Promise<TickResult> {
     emailBudgetRemaining: getEmailBudgetRemaining(state),
     openPermissionCount: getOpenPermissionCount(state),
     recentFeedTail: state.feed.slice(-5).map((f) => f.text),
-    inboundSinceLastTick: inboundProcessed.newCount + williamUnreadSinceLastTick(state),
+    inboundSinceLastTick:
+      inboundProcessed.newCount + webOfferingsProcessed.newCount + williamUnreadSinceLastTick(state),
     unreadFromWilliam: countUnreadFromWilliam(state),
     williamMessagePreview: latestUnreadWilliamPreview(state),
     williamMessageText: latestUnreadWilliamText(state),
@@ -115,6 +120,9 @@ export async function runMindTick(): Promise<TickResult> {
     inventory: state.inventory,
     inventorySummary: inventorySummary(state),
     webFetchesRemaining: webFetchesRemaining(state),
+    activeExhibitions: activeExhibitionsForSense(state),
+    lastVisitedExhibitionId: state.lastVisitedExhibitionId,
+    webOfferingsSinceLastTick: webOfferingsProcessed.newCount,
   };
 
   const salient = shouldDecideBeSalient(

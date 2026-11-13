@@ -5,6 +5,10 @@ import { loudestHobbies } from "../hobbies/engine.js";
 import { getEmailBudgetRemaining } from "../email/rate-limits.js";
 import { countUnreadFromWilliam } from "../conversation/messages.js";
 import { countUnprocessedInbound } from "../inbound/offering.js";
+import { countUnprocessedWebOfferings, recentWebOfferings } from "../inbound/web-offering.js";
+import type { Exhibition } from "../world/exhibitions.js";
+import { findExhibition, getActiveExhibitions } from "../world/exhibitions.js";
+import { resolveLlmProviderName } from "../llm/factory.js";
 
 export interface NowSnapshot {
   at: string;
@@ -27,6 +31,13 @@ export interface NowSnapshot {
   inventorySummary: string;
   /** Last 50 private diary lines, newest first (William-readable). */
   privateDiaryTail: string[];
+  exhibitions: Exhibition[];
+  lastVisitedExhibition?: { id: string; title: string; at?: string };
+  webOfferingsPending: number;
+  webOfferingsRecent: { id: string; text: string; gift_label?: string; received_at: string }[];
+  llmProvider: "heuristic" | "openai" | "anthropic";
+  /** Shown on dashboard when running without API keys. */
+  llmProviderHint?: string;
 }
 
 export const PRIVATE_DIARY_TAIL_LIMIT = 50;
@@ -70,6 +81,29 @@ export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
     purse: state.purse,
     inventorySummary: inventorySummary(state),
     privateDiaryTail: privateDiaryTailNewestFirst(state),
+    exhibitions: getActiveExhibitions(state).concat(
+      (state.exhibitions ?? []).filter((e) => !e.active),
+    ),
+    lastVisitedExhibition: state.lastVisitedExhibitionId
+      ? (() => {
+          const ex = findExhibition(state, state.lastVisitedExhibitionId!);
+          return ex
+            ? { id: ex.id, title: ex.title, at: state.lastVisitedExhibitionAt }
+            : { id: state.lastVisitedExhibitionId, title: state.lastVisitedExhibitionId };
+        })()
+      : undefined,
+    webOfferingsPending: countUnprocessedWebOfferings(state),
+    webOfferingsRecent: recentWebOfferings(state, 8).map((o) => ({
+      id: o.id,
+      text: o.text,
+      gift_label: o.gift_label,
+      received_at: o.received_at,
+    })),
+    llmProvider: resolveLlmProviderName(),
+    llmProviderHint:
+      resolveLlmProviderName() === "heuristic"
+        ? "Heuristic mode — set OPENAI_API_KEY (or OLLE_LLM_PROVIDER=openai) in .env and restart for richer speak."
+        : undefined,
   };
 }
 
@@ -87,6 +121,8 @@ export function buildAuditSnapshot(state: OlleWorldState, limit = 80) {
     "execution_failed",
     "email_suppressed",
     "inbound_offering",
+    "web_offering",
+    "exhibition_added",
   ]);
   return state.audit.filter((a) => permKinds.has(a.kind)).slice(-limit);
 }

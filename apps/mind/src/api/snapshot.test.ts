@@ -29,6 +29,14 @@ describe("privateDiary in snapshots", () => {
     expect(d.shared).toHaveLength(1);
   });
 
+  it("exposes llmProvider on /now", () => {
+    const now = buildNowSnapshot(emptyWorldState());
+    expect(["heuristic", "openai", "anthropic"]).toContain(now.llmProvider);
+    if (now.llmProvider === "heuristic") {
+      expect(now.llmProviderHint).toMatch(/OPENAI_API_KEY/);
+    }
+  });
+
   it("caps at 50 entries", () => {
     const state = emptyWorldState({
       privateDiary: Array.from({ length: 60 }, (_, i) => `line-${i}`),
