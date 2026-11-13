@@ -38,6 +38,7 @@ import {
   inventorySummary,
   rollForageLoot,
 } from "../survival/inventory.js";
+import { findExhibition, getActiveExhibitions } from "./exhibitions.js";
 import {
   appendAudit,
   appendPinoFeed,
@@ -142,6 +143,17 @@ export function validateAct(state: OlleWorldState, decision: DecideOutput): Worl
     }
   }
 
+  if (decision.action_id === "visit_exhibition") {
+    const exId = String(decision.params.exhibition_id ?? "");
+    const ex = findExhibition(state, exId);
+    if (!ex || !ex.active) {
+      return { ok: false, rejectReason: "No such active exhibition" };
+    }
+    if (getActiveExhibitions(state).length === 0) {
+      return { ok: false, rejectReason: "No exhibitions open" };
+    }
+  }
+
   return { ok: true };
 }
 
@@ -201,6 +213,29 @@ export async function applyAct(
       applyNeedDelta(state.feelings, { curiosity: -0.08, wonder: -0.05 });
       state.lastActivity = `nursing: ${hobby.label}`;
       return { ok: true, pendingSpeakKind: "activity_voice" };
+    }
+    case "visit_exhibition": {
+      const ex = findExhibition(state, String(params.exhibition_id ?? ""));
+      if (!ex || !ex.active) {
+        return { ok: false, rejectReason: "No such active exhibition" };
+      }
+      ensureHobbies(state);
+      let hobby = state.hobbies.find((h) => h.label.toLowerCase() === ex.title.toLowerCase());
+      if (!hobby) {
+        hobby = spawnHobby(state, ex.title);
+      }
+      bumpHobby(state, hobby.id, 0.14, ex.blurb.slice(0, 200));
+      applyNeedDelta(state.feelings, { curiosity: -0.12, wonder: -0.14, joy: 0.06 });
+      state.lastVisitedExhibitionId = ex.id;
+      state.lastVisitedExhibitionAt = new Date().toISOString();
+      state.lastActivity = `visiting: ${ex.title}`;
+      appendPinoFeed(state, "noticed", `At exhibition «${ex.title}»`, {
+        ok: true,
+        action_id,
+        about: "exhibition",
+        meta: { exhibition_id: ex.id },
+      });
+      return { ok: true, pendingSpeakKind: "private_diary" };
     }
     case "wander_curiosity": {
       ensureHobbies(state);
@@ -559,5 +594,8 @@ function hobbySenseFromState(state: OlleWorldState): SenseSnapshot {
     inventory: state.inventory,
     inventorySummary: inventorySummary(state),
     webFetchesRemaining: webFetchesRemaining(state),
+    activeExhibitions: state.exhibitions?.filter((e) => e.active).map((e) => ({ id: e.id, title: e.title })) ?? [],
+    lastVisitedExhibitionId: state.lastVisitedExhibitionId,
+    webOfferingsSinceLastTick: 0,
   };
 }

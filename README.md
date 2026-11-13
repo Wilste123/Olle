@@ -144,7 +144,7 @@ Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured
 
 ## Actions (Phase 0)
 
-- **Class A:** `continue_activity`, `feel_and_note`, `rest`, `think_about`, `remember`, `read_world`, `draft_email`, `sleep`, `nurse_hobby`, `wander_curiosity`, `play_solo`, `eat`, `forage`, `buy_from_supply`, `craft_expression`
+- **Class A:** `continue_activity`, `feel_and_note`, `rest`, `think_about`, `remember`, `read_world`, `draft_email`, `sleep`, `nurse_hobby`, `wander_curiosity`, `visit_exhibition`, `play_solo`, `eat`, `forage`, `buy_from_supply`, `craft_expression`
 - **Class B:** `append_private_diary`, `notify_william`, `ask_william_for`, `reply_to_william`, `email_william`
 - **Class C:** `propose_shared_diary_entry` (permission-gated)
 - **Class D:** `add_map_pin` — blocked
@@ -158,6 +158,17 @@ Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured
 **Dashboard (Phase 1):** `GET /`, `/dashboard`, `/diary`, `/api/now`, `/api/diary`, `/api/feed`, `/api/audit` on the same port as inbound. Private diary lines (William-readable) appear on the dashboard and in `/api/diary`.
 
 **Talk to Olle:** `GET /chat`, `POST /api/message` `{ "text": "..." }` (localhost or `OLLE_MESSAGE_TOKEN`), CLI `npm run olle -- say "hei olle"`. Replies land in `conversation` on the next mind tick (`reply_to_william`).
+
+### Web exhibitions & offerings (William)
+
+Olle's **web museum** holds changing `exhibitions` in state (two cozy defaults on a fresh save). When wonder/curiosity runs high, the heuristic may `visit_exhibition` or `wander_curiosity`.
+
+| Endpoint | Body | Auth |
+|----------|------|------|
+| `POST /api/offering` | `{ "text", "gift_label"? }` | Same as `/api/message` (localhost or `Bearer OLLE_MESSAGE_TOKEN`) |
+| `POST /api/exhibitions` | `{ "title", "blurb", "url"? }` | Same |
+
+Offerings queue like inbound email and are absorbed on the next mind tick. Dashboard block **Utstillinger** lists exhibitions, last visit, and recent offerings.
 
 ## Repo layout
 
