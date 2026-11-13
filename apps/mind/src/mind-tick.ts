@@ -44,6 +44,7 @@ import {
 import { processInboundForTick } from "./inbound/offering.js";
 import { processWebOfferingsForTick } from "./inbound/web-offering.js";
 import { activeExhibitionsForSense, ensureExhibitions } from "./world/exhibitions.js";
+import { ensurePlacement, placementLabel, reachableFromState, currentPlaceId } from "./world/places.js";
 
 export interface TickResult {
   decision?: DecideOutput;
@@ -92,6 +93,7 @@ export async function runMindTick(): Promise<TickResult> {
   state.feelings.feelingWords = deriveFeelingWords(state.feelings);
 
   ensureExhibitions(state);
+  ensurePlacement(state);
   const inboundProcessed = processInboundForTick(state);
   const webOfferingsProcessed = processWebOfferingsForTick(state);
   const memorySnippets = [
@@ -123,6 +125,9 @@ export async function runMindTick(): Promise<TickResult> {
     activeExhibitions: activeExhibitionsForSense(state),
     lastVisitedExhibitionId: state.lastVisitedExhibitionId,
     webOfferingsSinceLastTick: webOfferingsProcessed.newCount,
+    placeId: currentPlaceId(state),
+    placeLabel: placementLabel(state),
+    reachablePlaceIds: reachableFromState(state),
   };
 
   const salient = shouldDecideBeSalient(

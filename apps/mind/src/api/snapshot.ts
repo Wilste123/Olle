@@ -8,10 +8,12 @@ import { countUnprocessedInbound } from "../inbound/offering.js";
 import { countUnprocessedWebOfferings, recentWebOfferings } from "../inbound/web-offering.js";
 import type { Exhibition } from "../world/exhibitions.js";
 import { findExhibition, getActiveExhibitions } from "../world/exhibitions.js";
+import { placementLabel } from "../world/places.js";
 
 export interface NowSnapshot {
   at: string;
   placement: OlleWorldState["placement"];
+  placeLabel: string;
   tickCount: number;
   feelings: OlleWorldState["feelings"];
   lastActivity: string;
@@ -60,6 +62,7 @@ export function buildNowSnapshot(state: OlleWorldState): NowSnapshot {
   return {
     at: new Date().toISOString(),
     placement: state.placement,
+    placeLabel: placementLabel(state),
     tickCount: state.tickCount,
     feelings: state.feelings,
     lastActivity: state.lastActivity,

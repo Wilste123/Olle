@@ -12,6 +12,7 @@ import { conversationForApi } from "./conversation/messages.js";
 import { renderChatPage } from "./dashboard/chat.js";
 import { renderDiaryPage } from "./dashboard/diary.js";
 import { renderDashboard } from "./dashboard/html.js";
+import { renderWorldPage } from "./dashboard/world.js";
 import { authorizeLocalMessage } from "./http/local-auth.js";
 import { postWilliamExhibition, postWilliamOffering } from "./api/william-web.js";
 import { loadState } from "./world/store.js";
@@ -68,6 +69,14 @@ export function createInboundServer(): http.Server {
         buildFeedSnapshot(state, 30),
         buildAuditSnapshot(state, 40),
       );
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(html);
+      return;
+    }
+
+    if (req.method === "GET" && urlPath === "/world") {
+      const state = await loadState();
+      const html = renderWorldPage(buildNowSnapshot(state), buildFeedSnapshot(state, 40));
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       res.end(html);
       return;

@@ -101,6 +101,7 @@ export function renderDashboard(
   <h1>Olle</h1>
   <p>
     <span class="pill">${esc(now.placement.status)}</span>
+    <span class="pill">${esc(now.placeLabel)}</span>
     <span class="pill">${esc(asleep)}</span>
     <span class="pill">mood ${mood}</span>
     <span class="pill">energy ${energy}</span>
@@ -119,7 +120,7 @@ export function renderDashboard(
       })
       .join(" ")}
   </p>
-  <p>Doing: ${esc(now.doing)} · <a href="/chat">Prat</a> · <a href="/diary">Dagbok</a> · <a href="#diary">Dagbok ↓</a> · <a href="/api/now">/api/now</a> · <a href="/api/diary">/api/diary</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
+  <p>Doing: ${esc(now.doing)} · <a href="/world">Verden</a> · <a href="/chat">Prat</a> · <a href="/diary">Dagbok</a> · <a href="#diary">Dagbok ↓</a> · <a href="/api/now">/api/now</a> · <a href="/api/diary">/api/diary</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
   <p>Inventory: ${esc(now.inventorySummary)}</p>
 
   <section>

@@ -13,6 +13,7 @@ import { ensureSurvivalState } from "../survival/inventory.js";
 import { normalizeFeelings } from "../feelings/normalize.js";
 import { PERMISSION_TTL_MS } from "@olle/protocol";
 import { cozyDefaultExhibitions, type Exhibition } from "./exhibitions.js";
+import { DEFAULT_PLACE_ID, ensurePlacement } from "./places.js";
 import type { WebOffering } from "../inbound/web-offering.js";
 
 /** Pino-style feed kinds. */
@@ -77,7 +78,7 @@ export interface ConversationMessage {
 export type { Exhibition };
 
 export interface OlleWorldState {
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
   placement: Placement;
   olleDay: number;
   feelings: FeelingsState;
@@ -115,9 +116,15 @@ export interface OlleWorldState {
   lastVisitedExhibitionAt?: string;
 }
 
+const defaultPlaced = () => ({
+  status: "placed" as const,
+  place_id: DEFAULT_PLACE_ID,
+  since: new Date().toISOString(),
+});
+
 const DEFAULT_STATE = (): OlleWorldState => ({
-  version: 3,
-  placement: { status: "unplaced" },
+  version: 5,
+  placement: defaultPlaced(),
   olleDay: 0,
   feelings: normalizeFeelings(undefined),
   privateDiary: [],
@@ -167,8 +174,12 @@ function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): O
   if ((parsed.version ?? 1) < 2) {
     ensureSurvivalState(base);
   }
-  base.version = 4;
+  if ((parsed.version ?? 1) < 5) {
+    ensurePlacement(base);
+  }
+  base.version = 5;
   ensureSurvivalState(base);
+  ensurePlacement(base);
   return base;
 }
 
