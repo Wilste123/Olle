@@ -130,6 +130,17 @@ const DEFAULT_STATE = (): OlleWorldState => ({
   inventory: [],
 });
 
+const PRIVATE_DIARY_STORE_CAP = 400;
+
+/** Drop consecutive duplicate diary lines (common when heuristic speak echoed `because`). */
+export function dedupeConsecutiveDiaryLines(lines: string[]): string[] {
+  const out: string[] = [];
+  for (const line of lines) {
+    if (out.length === 0 || out[out.length - 1] !== line) out.push(line);
+  }
+  return out;
+}
+
 function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): OlleWorldState {
   const base = {
     ...DEFAULT_STATE(),
@@ -153,6 +164,7 @@ function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): O
   }
   base.version = 3;
   ensureSurvivalState(base);
+  base.privateDiary = dedupeConsecutiveDiaryLines(base.privateDiary).slice(-PRIVATE_DIARY_STORE_CAP);
   return base;
 }
 

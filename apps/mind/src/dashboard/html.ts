@@ -97,7 +97,11 @@ export function renderDashboard(
       })
       .join(" ")}
   </p>
-  <p>Doing: ${esc(now.doing)} · <a href="/chat">Prat</a> · <a href="/diary">Dagbok</a> · <a href="#diary">Dagbok ↓</a> · <a href="/api/now">/api/now</a> · <a href="/api/diary">/api/diary</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
+  <p>Doing: ${esc(now.doing)} · LLM <strong>${esc(now.llmProvider)}</strong>${
+    now.llmProviderHint
+      ? ` — <span style="color:#664;">${esc(now.llmProviderHint)}</span>`
+      : ""
+  } · <a href="/chat">Prat</a> · <a href="/diary">Dagbok</a> · <a href="#diary">Dagbok ↓</a> · <a href="/api/now">/api/now</a> · <a href="/api/diary">/api/diary</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
   <p>Inventory: ${esc(now.inventorySummary)}</p>
 
   <section>

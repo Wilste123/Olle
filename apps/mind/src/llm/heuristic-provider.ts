@@ -16,7 +16,11 @@ export class HeuristicProvider implements LlmProvider {
         text: `Couldn't do that: ${ctx.worldRejectReason ?? "world rejected the action"}.`,
       };
     }
-    return { text: speakAfterDecide(ctx.lockedDecision, ctx.feelings) };
+    return {
+      text: speakAfterDecide(ctx.lockedDecision, ctx.feelings, {
+        williamMessageText: ctx.williamMessageText,
+      }),
+    };
   }
 }
 
