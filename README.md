@@ -65,7 +65,7 @@ State **version 2** adds `survival.hunger`, `purse.coins`, and `inventory[]` (no
 
 1. `cp .env.example .env` — secrets only in `.env` (never committed).
 2. `npm install && npm run build && npm test` — all green.
-3. `npm start` — mind loop, inbound webhook, and dashboard at `http://127.0.0.1:8787/dashboard`.
+3. `npm run dev` — mind loop, inbound webhook, and dashboard at `http://127.0.0.1:8787/dashboard`.
 4. Without API keys — heuristic mind still ticks; with `OPENAI_API_KEY` (default) or `ANTHROPIC_API_KEY` — LLM decide/speak.
 5. Permission E2E — Class C → email mock or Resend → `olle permit approve <id>` **or** inbound `YES <id>` → shared diary `published`.
 
@@ -78,7 +78,8 @@ cp .env.example .env   # set WILLIAM_EMAIL at minimum
 npm install
 npm run build
 npm test
-npm start            # live Olle (tick loop + inbound server)
+npm run dev          # live Olle with tsx (tick loop + inbound server)
+npm start            # production (requires npm run build first)
 ```
 
 One-shot tick (debug):
@@ -153,7 +154,9 @@ Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured
 
 **Outbound:** set `RESEND_API_KEY`, `OLLE_EMAIL_FROM`, and `WILLIAM_EMAIL`.
 
-**Inbound:** `npm start` exposes `POST /webhooks/email/inbound`. Route Resend inbound (or ngrok) to that path; body may be Resend JSON or `{ "from", "text" }`. Non-permission mail becomes **offerings** (queued for Sense).
+**Inbound:** `npm run dev` / Fly deploy exposes `POST /webhooks/email/inbound`.
+
+**Fly hosting:** [docs/olle-fly.md](docs/olle-fly.md) — Docker image, volume-backed state, William session login on `/login`. Route Resend inbound (or ngrok) to that path; body may be Resend JSON or `{ "from", "text" }`. Non-permission mail becomes **offerings** (queued for Sense).
 
 **Dashboard (Phase 1):** `GET /`, `/dashboard`, `/diary`, `/api/now`, `/api/diary`, `/api/feed`, `/api/audit` on the same port as inbound. Private diary lines (William-readable) appear on the dashboard and in `/api/diary`.
 

@@ -1,4 +1,5 @@
 import type { DiarySnapshot } from "../api/snapshot.js";
+import { renderWorldNav } from "./nav.js";
 
 function esc(s: string): string {
   return s
@@ -35,7 +36,8 @@ export function renderDiaryPage(diary: DiarySnapshot): string {
   </style>
 </head>
 <body>
-  <p><a href="/dashboard">← Dashboard</a> · <a href="/chat">Prat</a> · <a href="/api/diary">/api/diary</a></p>
+  ${renderWorldNav("diary")}
+  <p><a href="/api/diary">/api/diary</a></p>
   <h1>Dagbok</h1>
   <p class="note">Olles <em>private</em> tanker — han velger å dele dem med deg her. Nyeste først.</p>
 
