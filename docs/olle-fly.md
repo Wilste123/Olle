@@ -1,6 +1,6 @@
 # Olle on Fly.io (William’s home)
 
-Fly is the primary always-on host for Olle: mind loop, dashboard, and Resend inbound on one machine with persistent state on a volume.
+Fly is the primary always-on host for Olle: mind loop, dashboard, kiosk, and Resend inbound on one machine with persistent state on a volume.
 
 ## Prerequisites
 
@@ -59,7 +59,7 @@ Check health (no login required):
 curl -sS https://olle-william.fly.dev/health
 ```
 
-Open `https://<your-app>.fly.dev/login`, sign in, then **Dashboard** at `/dashboard`.
+Open `https://<your-app>.fly.dev/login`, sign in, then **Dashboard** at `/dashboard` or fullscreen **Kiosk** at `/kiosk` (optional `?view=world`).
 
 ## 5. Resend inbound webhook
 
@@ -72,6 +72,10 @@ https://<your-app>.fly.dev/webhooks/email/inbound
 (`OLLE_INBOUND_PATH` default — must match Resend configuration.)
 
 Webhook POSTs are **not** behind session auth; sender allow-list still applies in app code.
+
+## Kiosk (second home)
+
+Upper-house display: [olle-kiosk-display.md](olle-kiosk-display.md) — Chromium pointed at `https://<app>.fly.dev/kiosk` after one login.
 
 ## Operations
 
@@ -94,4 +98,6 @@ After code changes: `npm run build && npm test` locally, then `fly deploy`.
 
 ## Pi / second home (optional)
 
-You can still run a copy on a Raspberry Pi with the same image or `npm start`; Fly remains the canonical URL for Resend and daily login unless you change DNS/webhooks.
+You can still run a copy on a Raspberry Pi with the same image or `npm start`; Fly remains the canonical URL for Resend and daily login unless you change DNS/webhooks. See [olle-raspberry-pi.md](olle-raspberry-pi.md).
+
+**Index:** [olle-deployment.md](olle-deployment.md)

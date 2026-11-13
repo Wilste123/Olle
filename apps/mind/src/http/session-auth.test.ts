@@ -107,7 +107,20 @@ describe("session auth gate", () => {
     }
   });
 
-  it("issues session cookie on POST /login and allows dashboard", async () => {
+  it("redirects /kiosk to /login when auth is on", async () => {
+    const server = createInboundServer();
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
+    try {
+      const res = await request(server, "GET", "/kiosk");
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toMatch(/^\/login/);
+      expect(decodeURIComponent(res.headers.location ?? "")).toContain("kiosk");
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
+
+  it("issues session cookie on POST /login and allows dashboard and kiosk", async () => {
     const server = createInboundServer();
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
     try {
@@ -126,6 +139,12 @@ describe("session auth gate", () => {
       });
       expect(dash.status).toBe(200);
       expect(dash.body).toContain("Olles verden");
+
+      const kiosk = await request(server, "GET", "/kiosk", {
+        headers: { Cookie: cookieHeader.split(";")[0] ?? "" },
+      });
+      expect(kiosk.status).toBe(200);
+      expect(kiosk.body).toContain("/api/now");
     } finally {
       await new Promise<void>((r) => server.close(() => r()));
     }

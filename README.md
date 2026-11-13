@@ -71,6 +71,10 @@ State **version 2** adds `survival.hunger`, `purse.coins`, and `inventory[]` (no
 
 Details: [docs/olle-ready.md](docs/olle-ready.md).
 
+## Deployment
+
+**Fly.io** is the recommended always-on host (volume-backed state, HTTPS, session login). An old PC upstairs can run Chromium kiosk → `https://<app>.fly.dev/kiosk` after signing in once. Overview: [docs/olle-deployment.md](docs/olle-deployment.md), deploy: [docs/olle-fly.md](docs/olle-fly.md), kiosk: [docs/olle-kiosk-display.md](docs/olle-kiosk-display.md). Optional LAN self-host: [docs/olle-raspberry-pi.md](docs/olle-raspberry-pi.md).
+
 ## Quick start
 
 ```bash
@@ -158,7 +162,7 @@ Mock outbound logs `[mock-email] WOULD SEND` when Resend is not fully configured
 
 **Fly hosting:** [docs/olle-fly.md](docs/olle-fly.md) — Docker image, volume-backed state, William session login on `/login`. Route Resend inbound (or ngrok) to that path; body may be Resend JSON or `{ "from", "text" }`. Non-permission mail becomes **offerings** (queued for Sense).
 
-**Dashboard (Phase 1):** `GET /`, `/dashboard`, `/diary`, `/api/now`, `/api/diary`, `/api/feed`, `/api/audit` on the same port as inbound. Private diary lines (William-readable) appear on the dashboard and in `/api/diary`.
+**Dashboard (Phase 1):** `GET /`, `/dashboard`, `/kiosk`, `/diary`, `/api/now`, `/api/diary`, `/api/feed`, `/api/audit` on the same port as inbound. Private diary lines (William-readable) appear on the dashboard and in `/api/diary`. **Kiosk:** fullscreen wall UI polling `/api/now` — see [docs/olle-kiosk-display.md](docs/olle-kiosk-display.md). With `OLLE_PUBLIC=1`, `/kiosk` requires the same session login as the dashboard.
 
 **Talk to Olle:** `GET /chat`, `POST /api/message` `{ "text": "..." }` (localhost or `OLLE_MESSAGE_TOKEN`), CLI `npm run olle -- say "hei olle"`. Replies land in `conversation` on the next mind tick (`reply_to_william`).
 

@@ -25,6 +25,7 @@ import {
   setSessionCookie,
   verifyLoginPassword,
 } from "./http/session-auth.js";
+import { renderKioskPage } from "./dashboard/kiosk.js";
 import { postWilliamExhibition, postWilliamOffering } from "./api/william-web.js";
 import { loadState } from "./world/store.js";
 
@@ -66,7 +67,51 @@ function json(res: http.ServerResponse, status: number, data: unknown): void {
 
 export function createInboundServer(): http.Server {
   return http.createServer(async (req, res) => {
-    const urlPath = req.url?.split("?")[0] ?? "";
+    const url = new URL(req.url ?? "/", "http://local");
+    const urlPath = url.pathname;
+
+    if (req.method === "GET" && urlPath === "/logout") {
+      if (isProductionAuthEnabled()) {
+        clearSessionCookie(res);
+      }
+      res.writeHead(302, { Location: isProductionAuthEnabled() ? "/login" : "/dashboard" });
+      res.end();
+      return;
+    }
+
+    if (req.method === "GET" && urlPath === "/login") {
+      const next = url.searchParams.get("next") ?? "/dashboard";
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(renderLoginPage({ next }));
+      return;
+    }
+
+    if (req.method === "POST" && urlPath === "/login") {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const raw = Buffer.concat(chunks).toString("utf8");
+      const form = parseFormUrlEncoded(raw);
+      const password = form.password ?? "";
+      const next = form.next?.startsWith("/") ? form.next : "/dashboard";
+      if (!verifyLoginPassword(password)) {
+        res.writeHead(401, { "Content-Type": "text/html; charset=utf-8" });
+        res.end(renderLoginPage({ error: "Feil passord.", next }));
+        return;
+      }
+      setSessionCookie(res);
+      res.writeHead(302, { Location: next });
+      res.end();
+      return;
+    }
+
+    if (
+      isProductionAuthEnabled() &&
+      !isPublicRoute(req.method ?? "GET", urlPath) &&
+      !isAuthenticated(req)
+    ) {
+      sendUnauthorized(req, res, urlPath);
+      return;
+    }
 
     if (req.method === "GET" && urlPath === "/logout") {
       if (isProductionAuthEnabled()) {
@@ -114,6 +159,14 @@ export function createInboundServer(): http.Server {
 
     if (req.method === "GET" && urlPath === "/health") {
       json(res, 200, { ok: true, service: "olle-inbound" });
+      return;
+    }
+
+    if (req.method === "GET" && urlPath === "/kiosk") {
+      const includeWorld = new URL(req.url ?? "", "http://local").searchParams.get("view") === "world";
+      const html = renderKioskPage(includeWorld);
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(html);
       return;
     }
 
@@ -289,12 +342,12 @@ export function startInboundServer(): http.Server {
   const server = createInboundServer();
   const host = process.env.OLLE_BIND_HOST ?? "0.0.0.0";
   server.listen(PORT, host, () => {
-    const host = process.env.OLLE_BIND_HOST ?? "0.0.0.0";
     console.log(`[olle-inbound] listening on http://${host}:${PORT}`);
     if (isProductionAuthEnabled()) {
       console.log("[olle-inbound] session auth enabled (William login)");
     }
     console.log(`[olle-inbound] dashboard: http://127.0.0.1:${PORT}/dashboard`);
+    console.log(`[olle-inbound] kiosk: http://127.0.0.1:${PORT}/kiosk`);
     console.log(`[olle-inbound] chat: http://127.0.0.1:${PORT}/chat`);
     console.log(`[olle-inbound] webhook POST ${PATH}`);
     console.log(`[olle-inbound] health: http://127.0.0.1:${PORT}/health`);

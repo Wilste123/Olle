@@ -4,7 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 export const SESSION_COOKIE = "olle_session";
 const SESSION_DAYS = 30;
 
-/** Fly / public internet: password + signed session cookie required. */
+/** Fly / LAN / public internet: password + signed session cookie required. */
 export function isProductionAuthEnabled(): boolean {
   return process.env.OLLE_PUBLIC === "1" || Boolean(process.env.FLY_APP_NAME?.trim());
 }
@@ -84,9 +84,11 @@ export function wantsHtml(urlPath: string): boolean {
   return (
     urlPath === "/" ||
     urlPath === "/dashboard" ||
+    urlPath === "/kiosk" ||
     urlPath === "/chat" ||
     urlPath === "/prat" ||
-    urlPath === "/diary"
+    urlPath === "/diary" ||
+    urlPath === "/world"
   );
 }
 
@@ -106,9 +108,9 @@ export function setSessionCookie(res: ServerResponse): void {
   const secure = isProductionAuthEnabled() ? "; Secure" : "";
   res.setHeader(
     "Set-Cookie",
-  `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${
-    SESSION_DAYS * 24 * 60 * 60
-  }${secure}`,
+    `${SESSION_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${
+      SESSION_DAYS * 24 * 60 * 60
+    }${secure}`,
   );
 }
 
