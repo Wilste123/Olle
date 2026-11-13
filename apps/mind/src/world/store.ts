@@ -12,6 +12,8 @@ import type {
 import { ensureSurvivalState } from "../survival/inventory.js";
 import { normalizeFeelings } from "../feelings/normalize.js";
 import { PERMISSION_TTL_MS } from "@olle/protocol";
+import { cozyDefaultExhibitions, type Exhibition } from "./exhibitions.js";
+import type { WebOffering } from "../inbound/web-offering.js";
 
 /** Pino-style feed kinds. */
 export type PinoFeedKind = "did" | "noticed" | "felt" | "mind";
@@ -72,8 +74,10 @@ export interface ConversationMessage {
   in_reply_to?: string;
 }
 
+export type { Exhibition };
+
 export interface OlleWorldState {
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
   placement: Placement;
   olleDay: number;
   feelings: FeelingsState;
@@ -105,6 +109,10 @@ export interface OlleWorldState {
     truncated?: boolean;
     at: string;
   };
+  exhibitions?: Exhibition[];
+  webOfferings?: WebOffering[];
+  lastVisitedExhibitionId?: string;
+  lastVisitedExhibitionAt?: string;
 }
 
 const DEFAULT_STATE = (): OlleWorldState => ({
@@ -128,6 +136,8 @@ const DEFAULT_STATE = (): OlleWorldState => ({
   survival: { hunger: 0.35 },
   purse: { coins: 3, lifetime_earned: 3 },
   inventory: [],
+  exhibitions: cozyDefaultExhibitions(),
+  webOfferings: [],
 });
 
 function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): OlleWorldState {
@@ -146,12 +156,18 @@ function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): O
     inventory: parsed.inventory ?? [],
     researchFetches: parsed.researchFetches ?? [],
     lastResearch: parsed.lastResearch,
+    exhibitions:
+      parsed.exhibitions ??
+      (parsed.version == null || (parsed.version ?? 1) < 4 ? cozyDefaultExhibitions() : []),
+    webOfferings: parsed.webOfferings ?? [],
+    lastVisitedExhibitionId: parsed.lastVisitedExhibitionId,
+    lastVisitedExhibitionAt: parsed.lastVisitedExhibitionAt,
   } as OlleWorldState;
   base.feelings = normalizeFeelings(parsed.feelings);
   if ((parsed.version ?? 1) < 2) {
     ensureSurvivalState(base);
   }
-  base.version = 3;
+  base.version = 4;
   ensureSurvivalState(base);
   return base;
 }
