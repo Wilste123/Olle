@@ -11,7 +11,8 @@
     "test": "vitest run",
     "tick": "tsx src/tick-once.ts",
     "olle": "tsx src/cli.ts",
-    "start": "tsx src/start.ts",
+    "start": "node dist/start.js",
+    "dev": "tsx src/start.ts",
     "inbound": "tsx src/inbound-server.ts"
   },
   "dependencies": {
