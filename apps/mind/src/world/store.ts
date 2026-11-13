@@ -4,6 +4,7 @@ import type {
   FeelingsState,
   HobbyThread,
   InventoryItem,
+  Opinion,
   PermissionRequestRecord,
   Placement,
   PurseState,
@@ -72,8 +73,16 @@ export interface ConversationMessage {
   in_reply_to?: string;
 }
 
+/** Forward-compatible with museum PR (#6) — optional until exhibitions land. */
+export interface ExhibitionRecord {
+  id: string;
+  title: string;
+  blurb: string;
+  active?: boolean;
+}
+
 export interface OlleWorldState {
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4 | 5;
   placement: Placement;
   olleDay: number;
   feelings: FeelingsState;
@@ -105,10 +114,14 @@ export interface OlleWorldState {
     truncated?: boolean;
     at: string;
   };
+  opinions: Opinion[];
+  exhibitions?: ExhibitionRecord[];
+  lastVisitedExhibitionId?: string;
+  lastVisitedExhibitionAt?: string;
 }
 
 const DEFAULT_STATE = (): OlleWorldState => ({
-  version: 3,
+  version: 5,
   placement: { status: "unplaced" },
   olleDay: 0,
   feelings: normalizeFeelings(undefined),
@@ -128,9 +141,10 @@ const DEFAULT_STATE = (): OlleWorldState => ({
   survival: { hunger: 0.35 },
   purse: { coins: 3, lifetime_earned: 3 },
   inventory: [],
+  opinions: [],
 });
 
-function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): OlleWorldState {
+export function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): OlleWorldState {
   const base = {
     ...DEFAULT_STATE(),
     ...parsed,
@@ -146,13 +160,20 @@ function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): O
     inventory: parsed.inventory ?? [],
     researchFetches: parsed.researchFetches ?? [],
     lastResearch: parsed.lastResearch,
+    opinions: parsed.opinions ?? [],
+    exhibitions: parsed.exhibitions,
+    lastVisitedExhibitionId: parsed.lastVisitedExhibitionId,
+    lastVisitedExhibitionAt: parsed.lastVisitedExhibitionAt,
   } as OlleWorldState;
   base.feelings = normalizeFeelings(parsed.feelings);
   if ((parsed.version ?? 1) < 2) {
     ensureSurvivalState(base);
   }
-  base.version = 3;
+  if (!base.opinions) {
+    base.opinions = [];
+  }
   ensureSurvivalState(base);
+  base.version = 5;
   return base;
 }
 

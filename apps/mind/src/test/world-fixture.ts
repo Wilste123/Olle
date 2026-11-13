@@ -3,7 +3,8 @@ import { normalizeFeelings } from "../feelings/normalize.js";
 
 export function emptyWorldState(over: Partial<OlleWorldState> = {}): OlleWorldState {
   return {
-    version: 3,
+    version: 5,
+    opinions: [],
     placement: { status: "unplaced" },
     olleDay: 0,
     feelings: normalizeFeelings({ mood: 0, energy: 0.8 }),

@@ -52,6 +52,13 @@ export function renderDashboard(
     .map((h) => `<li>${esc(h.label)} <small>heat ${h.heat.toFixed(2)}</small></li>`)
     .join("");
 
+  const opinionItems = now.topOpinions
+    .map(
+      (o) =>
+        `<li><strong>${esc(o.topic)}</strong> — ${esc(o.stance)} <small>konfidens ${(o.confidence * 100).toFixed(0)}%</small></li>`,
+    )
+    .join("");
+
   const privateDiaryItems = now.privateDiaryTail
     .map((line) => `<li>${esc(line)}</li>`)
     .join("");
@@ -103,6 +110,12 @@ export function renderDashboard(
   <section>
     <h2>Hobbies / threads</h2>
     <ul>${hobbyItems || "<li>(warming up)</li>"}</ul>
+  </section>
+
+  <section>
+    <h2>Meninger</h2>
+    <p class="note" style="color:#555;font-size:0.95rem;">Olles egne ståsted — private men synlige for deg her (topp 5 etter konfidens).</p>
+    <ul>${opinionItems || "<li>(ingen ennå — forskning og tanker bygger dem)</li>"}</ul>
   </section>
 
   <section>

@@ -20,6 +20,7 @@ export function baseSense(over: Partial<SenseSnapshot> = {}): SenseSnapshot {
     inventory: [],
     inventorySummary: "(empty)",
     webFetchesRemaining: 12,
+    topOpinions: [],
     ...over,
   };
 }
