@@ -1,5 +1,6 @@
 import type { NowSnapshot } from "../api/snapshot.js";
 import type { FeedEntry } from "../world/store.js";
+import { renderWorldNav } from "./nav.js";
 
 function esc(s: string): string {
   return s
@@ -63,6 +64,28 @@ export function renderDashboard(
     .map((line) => `<li>${esc(line)}</li>`)
     .join("");
 
+  const exhibitionItems = now.exhibitions
+    .map((e) => {
+      const status = e.active ? "åpen" : "lukket";
+      const link = e.url ? ` <a href="${esc(e.url)}" rel="noopener">lenke</a>` : "";
+      return `<li><strong>${esc(e.title)}</strong> <small>(${status})</small> — ${esc(e.blurb.slice(0, 100))}${link}</li>`;
+    })
+    .join("");
+
+  const lastVisit = now.lastVisitedExhibition
+    ? `${esc(now.lastVisitedExhibition.title)}${
+        now.lastVisitedExhibition.at ? ` <small>(${esc(now.lastVisitedExhibition.at)})</small>` : ""
+      }`
+    : "(ingen besøk ennå)";
+  const offeringItems = now.webOfferingsRecent
+    .map(
+      (o) =>
+        `<li>${esc(o.text.slice(0, 160))}${
+          o.gift_label ? ` <em>(${esc(o.gift_label)})</em>` : ""
+        } <small>${esc(o.received_at)}</small></li>`,
+    )
+    .join("");
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,9 +106,11 @@ export function renderDashboard(
   </style>
 </head>
 <body>
+  ${renderWorldNav("dashboard")}
   <h1>Olle</h1>
   <p>
     <span class="pill">${esc(now.placement.status)}</span>
+    <span class="pill">${esc(now.placeLabel)}</span>
     <span class="pill">${esc(asleep)}</span>
     <span class="pill">mood ${mood}</span>
     <span class="pill">energy ${energy}</span>
@@ -104,8 +129,24 @@ export function renderDashboard(
       })
       .join(" ")}
   </p>
-  <p>Doing: ${esc(now.doing)} · <a href="/chat">Prat</a> · <a href="/diary">Dagbok</a> · <a href="#diary">Dagbok ↓</a> · <a href="/api/now">/api/now</a> · <a href="/api/diary">/api/diary</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
+  <p>Doing: ${esc(now.doing)} · LLM <strong>${esc(now.llmProvider)}</strong>${
+    now.llmProviderHint
+      ? ` — <span style="color:#664;">${esc(now.llmProviderHint)}</span>`
+      : ""
+  } · <a href="/world">Verden</a> · <a href="/chat">Prat</a> · <a href="/diary">Dagbok</a> · <a href="#diary">Dagbok ↓</a> · <a href="/api/now">/api/now</a> · <a href="/api/diary">/api/diary</a> · <a href="/api/feed">/api/feed</a> · <a href="/api/audit">/api/audit</a></p>
   <p>Inventory: ${esc(now.inventorySummary)}</p>
+
+  <section>
+    <h2>Utstillinger</h2>
+    <p>Olle sist besøkte: ${lastVisit}</p>
+    <p>William offerings i kø: ${now.webOfferingsPending}</p>
+    <ul>${exhibitionItems || "<li>(ingen)</li>"}</ul>
+    ${
+      offeringItems
+        ? `<h3 style="font-size:1rem;margin-top:0.75rem">Nylige offerings</h3><ul>${offeringItems}</ul>`
+        : ""
+    }
+  </section>
 
   <section>
     <h2>Hobbies / threads</h2>

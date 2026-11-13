@@ -18,7 +18,7 @@ describe("play_solo", () => {
     const d = { action_id: "play_solo" as const, params: { mood: "silly" }, because: "play" };
     const v = validateAct(s, d);
     const r = await applyAct(s, d, v, createEmailAdapter());
-    expect(r.pendingSpeakKind).toBe("private_diary");
+    expect(r.pendingSpeakKind).toBe("activity_voice");
     expect(s.feelings.needs.expression).toBeLessThan(0.8);
   });
 });

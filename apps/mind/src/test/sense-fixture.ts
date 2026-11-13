@@ -5,7 +5,10 @@ export function baseSense(over: Partial<SenseSnapshot> = {}): SenseSnapshot {
   return {
     at: new Date().toISOString(),
     olleDay: 0,
-    placement: { status: "unplaced" },
+    placement: { status: "placed", place_id: "home_nook", since: new Date().toISOString() },
+    placeId: "home_nook",
+    placeLabel: "Home nook",
+    reachablePlaceIds: ["hallway"],
     feelings: normalizeFeelings({ mood: 0, energy: 0.8, needs: { rest: 0.2, curiosity: 0.3, social: 0.3 } as never }),
     threads: ["William"],
     hobbies: [],
@@ -21,6 +24,8 @@ export function baseSense(over: Partial<SenseSnapshot> = {}): SenseSnapshot {
     inventorySummary: "(empty)",
     webFetchesRemaining: 12,
     topOpinions: [],
+    activeExhibitions: [],
+    webOfferingsSinceLastTick: 0,
     ...over,
   };
 }

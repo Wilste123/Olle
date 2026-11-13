@@ -13,6 +13,9 @@ import type {
 import { ensureSurvivalState } from "../survival/inventory.js";
 import { normalizeFeelings } from "../feelings/normalize.js";
 import { PERMISSION_TTL_MS } from "@olle/protocol";
+import { cozyDefaultExhibitions, type Exhibition } from "./exhibitions.js";
+import { DEFAULT_PLACE_ID, ensurePlacement } from "./places.js";
+import type { WebOffering } from "../inbound/web-offering.js";
 
 /** Pino-style feed kinds. */
 export type PinoFeedKind = "did" | "noticed" | "felt" | "mind";
@@ -73,13 +76,7 @@ export interface ConversationMessage {
   in_reply_to?: string;
 }
 
-/** Forward-compatible with museum PR (#6) — optional until exhibitions land. */
-export interface ExhibitionRecord {
-  id: string;
-  title: string;
-  blurb: string;
-  active?: boolean;
-}
+export type { Exhibition };
 
 export interface OlleWorldState {
   version: 1 | 2 | 3 | 4 | 5;
@@ -115,14 +112,21 @@ export interface OlleWorldState {
     at: string;
   };
   opinions: Opinion[];
-  exhibitions?: ExhibitionRecord[];
+  exhibitions?: Exhibition[];
+  webOfferings?: WebOffering[];
   lastVisitedExhibitionId?: string;
   lastVisitedExhibitionAt?: string;
 }
 
+const defaultPlaced = () => ({
+  status: "placed" as const,
+  place_id: DEFAULT_PLACE_ID,
+  since: new Date().toISOString(),
+});
+
 const DEFAULT_STATE = (): OlleWorldState => ({
   version: 5,
-  placement: { status: "unplaced" },
+  placement: defaultPlaced(),
   olleDay: 0,
   feelings: normalizeFeelings(undefined),
   privateDiary: [],
@@ -142,7 +146,20 @@ const DEFAULT_STATE = (): OlleWorldState => ({
   purse: { coins: 3, lifetime_earned: 3 },
   inventory: [],
   opinions: [],
+  exhibitions: cozyDefaultExhibitions(),
+  webOfferings: [],
 });
+
+const PRIVATE_DIARY_STORE_CAP = 400;
+
+/** Drop consecutive duplicate diary lines (common when heuristic speak echoed `because`). */
+export function dedupeConsecutiveDiaryLines(lines: string[]): string[] {
+  const out: string[] = [];
+  for (const line of lines) {
+    if (out.length === 0 || out[out.length - 1] !== line) out.push(line);
+  }
+  return out;
+}
 
 export function migrateState(parsed: Partial<OlleWorldState> & { version?: number }): OlleWorldState {
   const base = {
@@ -161,7 +178,10 @@ export function migrateState(parsed: Partial<OlleWorldState> & { version?: numbe
     researchFetches: parsed.researchFetches ?? [],
     lastResearch: parsed.lastResearch,
     opinions: parsed.opinions ?? [],
-    exhibitions: parsed.exhibitions,
+    exhibitions:
+      parsed.exhibitions ??
+      (parsed.version == null || (parsed.version ?? 1) < 4 ? cozyDefaultExhibitions() : []),
+    webOfferings: parsed.webOfferings ?? [],
     lastVisitedExhibitionId: parsed.lastVisitedExhibitionId,
     lastVisitedExhibitionAt: parsed.lastVisitedExhibitionAt,
   } as OlleWorldState;
@@ -172,8 +192,13 @@ export function migrateState(parsed: Partial<OlleWorldState> & { version?: numbe
   if (!base.opinions) {
     base.opinions = [];
   }
-  ensureSurvivalState(base);
+  if ((parsed.version ?? 1) < 5) {
+    ensurePlacement(base);
+  }
   base.version = 5;
+  ensureSurvivalState(base);
+  ensurePlacement(base);
+  base.privateDiary = dedupeConsecutiveDiaryLines(base.privateDiary).slice(-PRIVATE_DIARY_STORE_CAP);
   return base;
 }
 

@@ -17,6 +17,7 @@ import {
   ensureHobbies,
   hobbyLabelsForSense,
   pickRandomHobby,
+  PRIVATE_DIARY_MIN_TICK_GAP,
   recordPrivateDiaryTick,
   spawnHobby,
   ticksSinceLastPrivateDiary,
@@ -38,6 +39,7 @@ import {
   rollForageLoot,
 } from "../survival/inventory.js";
 import { ingestImpressionFromAction, topOpinionsByConfidence } from "../mind/opinions.js";
+import { findExhibition, getActiveExhibitions } from "./exhibitions.js";
 import {
   appendAudit,
   appendPinoFeed,
@@ -45,6 +47,7 @@ import {
   type OlleWorldState,
   type SharedDiaryEntry,
 } from "./store.js";
+import { applyGoToPlace, ensurePlacement, setPlacementAt, validateGoToPlace } from "./places.js";
 
 export interface WorldValidation {
   ok: boolean;
@@ -58,6 +61,7 @@ export interface WorldActResult {
   /** Prose-dependent effects run after speak */
   pendingSpeakKind?:
     | "private_diary"
+    | "activity_voice"
     | "notify_william"
     | "email_william"
     | "reply_to_william"
@@ -120,6 +124,15 @@ export function validateAct(state: OlleWorldState, decision: DecideOutput): Worl
     if (!can.ok) return { ok: false, rejectReason: can.reason ?? "Cannot buy" };
   }
 
+  if (decision.action_id === "append_private_diary") {
+    if (ticksSinceLastPrivateDiary(state) < PRIVATE_DIARY_MIN_TICK_GAP) {
+      return {
+        ok: false,
+        rejectReason: `Private diary cooled down — wait ${PRIVATE_DIARY_MIN_TICK_GAP} ticks between entries`,
+      };
+    }
+  }
+
   if (decision.action_id === "research_topic") {
     if (webFetchesRemaining(state) <= 0) {
       return { ok: false, rejectReason: "Daily web fetch limit reached" };
@@ -130,6 +143,23 @@ export function validateAct(state: OlleWorldState, decision: DecideOutput): Worl
     if (!q && !u && !fromWilliam) {
       return { ok: false, rejectReason: "research_topic needs https url or query" };
     }
+  }
+
+  if (decision.action_id === "visit_exhibition") {
+    const exId = String(decision.params.exhibition_id ?? "");
+    const ex = findExhibition(state, exId);
+    if (!ex || !ex.active) {
+      return { ok: false, rejectReason: "No such active exhibition" };
+    }
+    if (getActiveExhibitions(state).length === 0) {
+      return { ok: false, rejectReason: "No exhibitions open" };
+    }
+  }
+
+  if (decision.action_id === "go_to_place") {
+    ensurePlacement(state);
+    const move = validateGoToPlace(state, String(decision.params.place_id ?? ""));
+    if (!move.ok) return { ok: false, rejectReason: move.rejectReason };
   }
 
   return { ok: true };
@@ -193,7 +223,43 @@ export async function applyAct(
       bumpHobby(state, hobby.id, 0.12);
       applyNeedDelta(state.feelings, { curiosity: -0.08, wonder: -0.05 });
       state.lastActivity = `nursing: ${hobby.label}`;
+      return { ok: true, pendingSpeakKind: "activity_voice" };
+    }
+    case "visit_exhibition": {
+      const ex = findExhibition(state, String(params.exhibition_id ?? ""));
+      if (!ex || !ex.active) {
+        return { ok: false, rejectReason: "No such active exhibition" };
+      }
+      ensureHobbies(state);
+      let hobby = state.hobbies.find((h) => h.label.toLowerCase() === ex.title.toLowerCase());
+      if (!hobby) {
+        hobby = spawnHobby(state, ex.title);
+      }
+      bumpHobby(state, hobby.id, 0.14, ex.blurb.slice(0, 200));
+      applyNeedDelta(state.feelings, { curiosity: -0.12, wonder: -0.14, joy: 0.06 });
+      state.lastVisitedExhibitionId = ex.id;
+      state.lastVisitedExhibitionAt = new Date().toISOString();
+      state.lastActivity = `visiting: ${ex.title}`;
+      ensurePlacement(state);
+      setPlacementAt(state, ex.place_id, { via: "visit_exhibition" });
+      appendPinoFeed(state, "noticed", `At exhibition «${ex.title}»`, {
+        ok: true,
+        action_id,
+        about: "exhibition",
+        meta: { exhibition_id: ex.id, place_id: ex.place_id },
+      });
       return { ok: true, pendingSpeakKind: "private_diary" };
+    }
+    case "go_to_place": {
+      ensurePlacement(state);
+      const placeId = String(params.place_id ?? "");
+      const moved = applyGoToPlace(state, placeId);
+      if (!moved.ok) {
+        return { ok: false, rejectReason: moved.rejectReason };
+      }
+      applyNeedDelta(state.feelings, { wonder: -0.04, curiosity: -0.03 });
+      state.lastActivity = `walking: ${placeId}`;
+      break;
     }
     case "wander_curiosity": {
       ensureHobbies(state);
@@ -212,7 +278,7 @@ export async function applyAct(
       bumpHobby(state, hobby.id, 0.1);
       applyNeedDelta(state.feelings, { curiosity: -0.1, wonder: -0.08 });
       state.lastActivity = `wandering: ${hobby.label}`;
-      return { ok: true, pendingSpeakKind: "private_diary" };
+      return { ok: true, pendingSpeakKind: "activity_voice" };
     }
     case "research_topic": {
       const research = await runResearchTopic(state, {
@@ -225,11 +291,15 @@ export async function applyAct(
       state.lastActivity = `research: ${research.bundle?.url ?? "web"}`;
       return { ok: true, pendingSpeakKind: "private_diary" };
     }
-    case "play_solo":
+    case "play_solo": {
+      ensureHobbies(state);
+      const playHobby = pickRandomHobby(state) ?? loudestOrRandom(state);
+      if (playHobby) bumpHobby(state, playHobby.id, 0.06);
       applyNeedDelta(state.feelings, { expression: -0.22, joy: 0.18, wonder: -0.05 });
       state.feelings.mood = Math.min(1, state.feelings.mood + 0.05);
       state.lastActivity = `playing solo${params.mood ? `: ${String(params.mood)}` : ""}`;
-      return { ok: true, pendingSpeakKind: "private_diary" };
+      return { ok: true, pendingSpeakKind: "activity_voice" };
+    }
     case "eat": {
       ensureSurvivalState(state);
       const itemId = String(params.item_id ?? foodInInventory(state)?.id ?? "");
@@ -369,6 +439,18 @@ export async function finalizeAct(
   if (!act.ok || !act.pendingSpeakKind) return;
 
   switch (act.pendingSpeakKind) {
+    case "activity_voice": {
+      const line = spoke.trim();
+      if (line) {
+        appendPinoFeed(state, "did", line, {
+          why: decision.because,
+          ok: true,
+          action_id: decision.action_id,
+          change: "activity",
+        });
+      }
+      break;
+    }
     case "private_diary": {
       const line =
         spoke.trim() || String(decision.params.line ?? decision.because);
@@ -550,5 +632,8 @@ function hobbySenseFromState(state: OlleWorldState): SenseSnapshot {
       stance: o.stance,
       confidence: o.confidence,
     })),
+    activeExhibitions: state.exhibitions?.filter((e) => e.active).map((e) => ({ id: e.id, title: e.title })) ?? [],
+    lastVisitedExhibitionId: state.lastVisitedExhibitionId,
+    webOfferingsSinceLastTick: 0,
   };
 }

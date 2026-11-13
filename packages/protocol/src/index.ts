@@ -1,7 +1,50 @@
-/** Where Olle exists in the physical world (future). Unplaced = mind-only life. */
+/** Where Olle exists in the cozy 2D world. Unplaced is migrated to home_nook on load. */
 export type Placement =
   | { status: "unplaced" }
-  | { status: "placed"; label: string; note?: string };
+  | { status: "placed"; place_id: string; since: string; note?: string };
+
+export type PlaceKind = "hub" | "gallery" | "nook" | "path";
+
+export interface Place {
+  id: string;
+  label: string;
+  kind: PlaceKind;
+  x: number;
+  y: number;
+}
+
+/** Static place catalog for world v1 (2D layout). */
+export const PLACES: readonly Place[] = [
+  { id: "home_nook", label: "Home nook", kind: "nook", x: 56, y: 132 },
+  { id: "hallway", label: "Hallway", kind: "path", x: 160, y: 132 },
+  { id: "gallery_a", label: "Gallery A", kind: "gallery", x: 280, y: 72 },
+  { id: "gallery_b", label: "Gallery B", kind: "gallery", x: 280, y: 192 },
+  { id: "quiet_bench", label: "Quiet bench", kind: "nook", x: 160, y: 232 },
+] as const;
+
+export type PlaceId = (typeof PLACES)[number]["id"];
+
+/** Undirected adjacency for `go_to_place` (one step only). */
+export const PLACE_GRAPH: Record<PlaceId, readonly PlaceId[]> = {
+  home_nook: ["hallway"],
+  hallway: ["home_nook", "gallery_a", "gallery_b", "quiet_bench"],
+  gallery_a: ["hallway", "gallery_b"],
+  gallery_b: ["hallway", "gallery_a"],
+  quiet_bench: ["hallway"],
+};
+
+export function getPlace(id: string): Place | undefined {
+  return PLACES.find((p) => p.id === id);
+}
+
+export function placeNeighbors(id: string): PlaceId[] {
+  const n = PLACE_GRAPH[id as PlaceId];
+  return n ? [...n] : [];
+}
+
+export function isPlaceNeighbor(fromId: string, toId: string): boolean {
+  return placeNeighbors(fromId).includes(toId as PlaceId);
+}
 
 export type ActionClass = "A" | "B" | "C" | "D";
 
@@ -117,6 +160,18 @@ export const ACTION_MANIFEST: readonly ActionDefinition[] = [
     class: "A",
     description: "Follow curiosity on a random or new hobby thread",
     paramsSchema: { hobby_id: "optional_string", spawn_label: "optional_string" },
+  },
+  {
+    id: "visit_exhibition",
+    class: "A",
+    description: "Visit a museum exhibition in Olle's web world",
+    paramsSchema: { exhibition_id: "string" },
+  },
+  {
+    id: "go_to_place",
+    class: "A",
+    description: "Walk to an adjacent place on the internal map",
+    paramsSchema: { place_id: "string" },
   },
   {
     id: "research_topic",
@@ -293,6 +348,15 @@ export interface SenseSnapshot {
   webFetchesRemaining: number;
   /** Strongest private stances for decide context (Class B display on dashboard). */
   topOpinions: OpinionView[];
+  /** Active exhibitions for decide (id + title). */
+  activeExhibitions: { id: string; title: string }[];
+  lastVisitedExhibitionId?: string;
+  webOfferingsSinceLastTick: number;
+  /** Current map position when placed. */
+  placeId?: string;
+  placeLabel?: string;
+  /** Adjacent place ids for movement decisions. */
+  reachablePlaceIds?: string[];
 }
 
 export interface PermissionRequestRecord {

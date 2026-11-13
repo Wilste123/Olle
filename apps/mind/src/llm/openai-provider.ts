@@ -162,7 +162,7 @@ export class OpenAiProvider implements LlmProvider {
         messages: [
           {
             role: "system",
-            content: `${OLLE_VOICE}\n\nYou are the SPEAK step only. The action is LOCKED — do not choose or suggest any action. Generate the short outward line (diary, chat reply, or email body). For reply_to_william, respond directly to william_message in the thread voice. For research_topic, write a short private diary summary of research_excerpt_for_summary_only (do NOT paste the whole page; max ~4 sentences). If world_ok is false, briefly acknowledge the rejection. No JSON. Max ~3 sentences unless summarizing research.`,
+            content: `${OLLE_VOICE}\n\nYou are the SPEAK step only. The action is LOCKED — do not choose or suggest any action. Generate the short outward line (diary, chat reply, or email body). For reply_to_william, answer william_message in natural Norwegian (bokmål): warm, direct, conversational — do NOT quote or parrot their message, and never say "William wrote". For research_topic, write a short private diary summary of research_excerpt_for_summary_only (do NOT paste the whole page; max ~4 sentences). If world_ok is false, briefly acknowledge the rejection. No JSON. Max ~3 sentences unless summarizing research.`,
           },
           {
             role: "user",

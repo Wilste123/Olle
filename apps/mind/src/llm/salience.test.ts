@@ -27,6 +27,8 @@ function sense(needsOver: Partial<SenseSnapshot["feelings"]["needs"]> = {}): Sen
     inboundSinceLastTick: 0,
     unreadFromWilliam: 0,
     topOpinions: [],
+    activeExhibitions: [],
+    webOfferingsSinceLastTick: 0,
   };
 }
 

@@ -27,7 +27,7 @@ cp .env.example .env   # edit
 npm install
 npm run build
 npm test
-npm start              # mind loop + inbound server + dashboard
+npm run dev            # mind loop + inbound server + dashboard (local)
 ```
 
 Open **http://127.0.0.1:8787/dashboard** (or `/api/now`, `/api/feed`, `/api/audit`). **Prat:** `/chat` eller `olle say "…"`.

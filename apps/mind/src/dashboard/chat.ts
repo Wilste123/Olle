@@ -1,4 +1,5 @@
 import type { ConversationMessage } from "../world/store.js";
+import { renderWorldNav } from "./nav.js";
 
 function esc(s: string): string {
   return s
@@ -40,9 +41,10 @@ export function renderChatPage(messages: ConversationMessage[]): string {
   </style>
 </head>
 <body>
+  ${renderWorldNav("chat")}
   <h1>Prat med Olle</h1>
   <p class="hint">Olle leser dette på sin egen rytme — ikke live chat. Svaret kommer i samtalen når neste tanke-tick kjører.</p>
-  <p><a href="/dashboard">Dashboard</a> · <a href="/api/conversation">JSON</a></p>
+  <p><a href="/api/conversation">JSON</a></p>
   <div id="thread">${rows || "<p><em>Ingen meldinger ennå.</em></p>"}</div>
   <form id="say">
     <textarea name="text" placeholder="Skriv til Olle…" required></textarea>
